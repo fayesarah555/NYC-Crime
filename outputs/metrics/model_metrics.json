@@ -1,0 +1,385 @@
+{
+  "citywide": {
+    "selected_model": "sarimax",
+    "selected_mae": 19.9818,
+    "selected_rmse": 26.6237,
+    "selected_mape": 9.62,
+    "baseline_mae": 22.75,
+    "baseline_mae_seasonal_rule": 22.5,
+    "baseline_wins": false,
+    "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
+    "improvement_pct": 12.17,
+    "backtest_quarters": 8,
+    "backtest_window": [
+      "2024Q3",
+      "2024Q4",
+      "2025Q1",
+      "2025Q2",
+      "2025Q3",
+      "2025Q4",
+      "2026Q1",
+      "2026Q2"
+    ],
+    "backtest_metrics": {
+      "seasonal_naive": {
+        "mae": 22.75,
+        "rmse": 25.5245,
+        "mape": 12.44
+      },
+      "holt_winters": {
+        "mae": 36.175,
+        "rmse": 48.1754,
+        "mape": 14.28
+      },
+      "sarimax": {
+        "mae": 19.9818,
+        "rmse": 26.6237,
+        "mape": 9.62
+      }
+    },
+    "model_failures": {},
+    "forecast": [
+      {
+        "quarter_label": "2026Q3",
+        "point": 378.46,
+        "lower": 258.42,
+        "upper": 498.49
+      },
+      {
+        "quarter_label": "2026Q4",
+        "point": 231.41,
+        "lower": 110.58,
+        "upper": 352.25
+      },
+      {
+        "quarter_label": "2027Q1",
+        "point": 107.94,
+        "lower": -12.93,
+        "upper": 228.81
+      },
+      {
+        "quarter_label": "2027Q2",
+        "point": 334.97,
+        "lower": 214.09,
+        "upper": 455.84
+      }
+    ],
+    "interpolated_quarters": [
+      "2020Q1"
+    ],
+    "n_quarters": 47,
+    "forecast_footnote": "Prévision gonflée par l'ajout de Central Park à la source en 2025Q1 ; voir coverage_gaps.csv."
+  },
+  "boroughs": {
+    "BRONX": {
+      "selected_model": "holt_winters",
+      "selected_mae": 12.7244,
+      "selected_rmse": 14.8311,
+      "selected_mape": 26.48,
+      "baseline_mae": 14.25,
+      "baseline_mae_seasonal_rule": 10.5,
+      "baseline_wins": false,
+      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
+      "improvement_pct": 10.71,
+      "backtest_quarters": 8,
+      "backtest_window": [
+        "2024Q3",
+        "2024Q4",
+        "2025Q1",
+        "2025Q2",
+        "2025Q3",
+        "2025Q4",
+        "2026Q1",
+        "2026Q2"
+      ],
+      "backtest_metrics": {
+        "seasonal_naive": {
+          "mae": 14.25,
+          "rmse": 15.346,
+          "mape": 31.18
+        },
+        "holt_winters": {
+          "mae": 12.7244,
+          "rmse": 14.8311,
+          "mape": 26.48
+        },
+        "sarimax": {
+          "mae": 15.7338,
+          "rmse": 18.5803,
+          "mape": 28.53
+        }
+      },
+      "model_failures": {},
+      "forecast": [
+        {
+          "quarter_label": "2026Q3",
+          "point": 71.11,
+          "lower": 49.19,
+          "upper": 93.86
+        },
+        {
+          "quarter_label": "2026Q4",
+          "point": 37.11,
+          "lower": 14.89,
+          "upper": 61.65
+        },
+        {
+          "quarter_label": "2027Q1",
+          "point": 19.57,
+          "lower": -3.19,
+          "upper": 42.84
+        },
+        {
+          "quarter_label": "2027Q2",
+          "point": 52.78,
+          "lower": 28.66,
+          "upper": 76.04
+        }
+      ]
+    },
+    "BROOKLYN": {
+      "selected_model": "seasonal_naive",
+      "selected_mae": 12.25,
+      "selected_rmse": 15.0,
+      "selected_mape": 25.46,
+      "baseline_mae": 12.25,
+      "baseline_mae_seasonal_rule": 17.375,
+      "baseline_wins": true,
+      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
+      "improvement_pct": 0.0,
+      "backtest_quarters": 8,
+      "backtest_window": [
+        "2024Q3",
+        "2024Q4",
+        "2025Q1",
+        "2025Q2",
+        "2025Q3",
+        "2025Q4",
+        "2026Q1",
+        "2026Q2"
+      ],
+      "backtest_metrics": {
+        "seasonal_naive": {
+          "mae": 12.25,
+          "rmse": 15.0,
+          "mape": 25.46
+        },
+        "holt_winters": {
+          "mae": 16.0917,
+          "rmse": 20.4667,
+          "mape": 28.31
+        },
+        "sarimax": {
+          "mae": 15.4268,
+          "rmse": 18.1065,
+          "mape": 30.7
+        }
+      },
+      "model_failures": {},
+      "forecast": [
+        {
+          "quarter_label": "2026Q3",
+          "point": 107.0,
+          "lower": 60.66,
+          "upper": 153.34
+        },
+        {
+          "quarter_label": "2026Q4",
+          "point": 69.0,
+          "lower": 22.66,
+          "upper": 115.34
+        },
+        {
+          "quarter_label": "2027Q1",
+          "point": 25.0,
+          "lower": -21.34,
+          "upper": 71.34
+        },
+        {
+          "quarter_label": "2027Q2",
+          "point": 96.0,
+          "lower": 49.66,
+          "upper": 142.34
+        }
+      ]
+    },
+    "MANHATTAN": {
+      "selected_model": "sarimax",
+      "selected_mae": 10.6136,
+      "selected_rmse": 12.3791,
+      "selected_mape": 13.34,
+      "baseline_mae": 10.625,
+      "baseline_mae_seasonal_rule": 12.0,
+      "baseline_wins": false,
+      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
+      "improvement_pct": 0.11,
+      "backtest_quarters": 8,
+      "backtest_window": [
+        "2024Q3",
+        "2024Q4",
+        "2025Q1",
+        "2025Q2",
+        "2025Q3",
+        "2025Q4",
+        "2026Q1",
+        "2026Q2"
+      ],
+      "backtest_metrics": {
+        "seasonal_naive": {
+          "mae": 10.625,
+          "rmse": 11.6458,
+          "mape": 13.07
+        },
+        "holt_winters": {
+          "mae": 11.6239,
+          "rmse": 15.5078,
+          "mape": 14.27
+        },
+        "sarimax": {
+          "mae": 10.6136,
+          "rmse": 12.3791,
+          "mape": 13.34
+        }
+      },
+      "model_failures": {},
+      "forecast": [
+        {
+          "quarter_label": "2026Q3",
+          "point": 132.18,
+          "lower": 83.79,
+          "upper": 180.57
+        },
+        {
+          "quarter_label": "2026Q4",
+          "point": 100.15,
+          "lower": 51.45,
+          "upper": 148.84
+        },
+        {
+          "quarter_label": "2027Q1",
+          "point": 40.94,
+          "lower": -7.77,
+          "upper": 89.65
+        },
+        {
+          "quarter_label": "2027Q2",
+          "point": 105.15,
+          "lower": 56.44,
+          "upper": 153.86
+        }
+      ]
+    },
+    "QUEENS": {
+      "selected_model": "holt_winters",
+      "selected_mae": 13.5671,
+      "selected_rmse": 16.7046,
+      "selected_mape": 45.78,
+      "baseline_mae": 18.25,
+      "baseline_mae_seasonal_rule": 13.375,
+      "baseline_wins": false,
+      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
+      "improvement_pct": 25.66,
+      "backtest_quarters": 8,
+      "backtest_window": [
+        "2024Q3",
+        "2024Q4",
+        "2025Q1",
+        "2025Q2",
+        "2025Q3",
+        "2025Q4",
+        "2026Q1",
+        "2026Q2"
+      ],
+      "backtest_metrics": {
+        "seasonal_naive": {
+          "mae": 18.25,
+          "rmse": 19.906,
+          "mape": 56.17
+        },
+        "holt_winters": {
+          "mae": 13.5671,
+          "rmse": 16.7046,
+          "mape": 45.78
+        },
+        "sarimax": {
+          "mae": 23.0569,
+          "rmse": 25.4451,
+          "mape": 67.77
+        }
+      },
+      "model_failures": {},
+      "forecast": [
+        {
+          "quarter_label": "2026Q3",
+          "point": 91.04,
+          "lower": 59.9,
+          "upper": 123.35
+        },
+        {
+          "quarter_label": "2026Q4",
+          "point": 47.5,
+          "lower": 15.94,
+          "upper": 82.36
+        },
+        {
+          "quarter_label": "2027Q1",
+          "point": 23.96,
+          "lower": -8.38,
+          "upper": 57.0
+        },
+        {
+          "quarter_label": "2027Q2",
+          "point": 65.58,
+          "lower": 31.32,
+          "upper": 98.62
+        }
+      ]
+    }
+  },
+  "skipped_boroughs": {
+    "BROOKLYN/QUEENS": "trop peu de données : 115 crimes sur 47 trimestres (moyenne 2.5/trimestre, 37 trimestres non nuls) ; libellé hybride (5 parcs) sans série homogène",
+    "STATEN ISLAND": "trop peu de données : 155 crimes sur 47 trimestres (moyenne 3.3/trimestre, 43 trimestres non nuls)"
+  },
+  "clustering": {
+    "n_parks": 337,
+    "min_crimes_ever": 5,
+    "features": [
+      "share_burglary",
+      "share_felony_assault",
+      "share_grand_larceny",
+      "share_grand_larceny_auto",
+      "share_murder",
+      "share_rape",
+      "share_robbery",
+      "log_total",
+      "log_acres"
+    ],
+    "selected_k": 4,
+    "silhouette": 0.225,
+    "silhouette_by_k": {
+      "2": 0.2066,
+      "3": 0.2005,
+      "4": 0.225,
+      "5": 0.2233,
+      "6": 0.2165
+    },
+    "cluster_sizes": {
+      "0": 83,
+      "1": 15,
+      "2": 81,
+      "3": 158
+    },
+    "cluster_top_types": {
+      "0": "grand_larceny",
+      "1": "robbery",
+      "2": "grand_larceny",
+      "3": "robbery"
+    },
+    "random_state": 42
+  },
+  "caveats": [
+    "Central Park n'apparaît dans la source qu'à partir de 2025Q1 : la croissance citywide 2024Q4→2025Q1 est en partie un artefact de couverture (outputs/tables/coverage_gaps.csv).",
+    "La ligne Flushing Meadows 2025Q4 est absente (anomalie de parsing, 18 crimes) — output/tables/source_anomalies.csv.",
+    "2020Q1 est absent en amont : interpolé entre 2019Q4 et 2020Q2 pour la modélisation, jamais traité comme zéro."
+  ]
+}

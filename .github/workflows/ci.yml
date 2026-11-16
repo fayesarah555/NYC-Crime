@@ -1,0 +1,107 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    name: python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check .
+      - name: Mypy
+        run: mypy etl analysis export
+      - name: Pytest (unit suite, coverage gate)
+        # Live reconciliation tests need data/ from `make data`; CI has none.
+        run: pytest -m "not live" --cov --cov-report=term-missing
+      - name: pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --skip-editable || true
+      - name: README numbers
+        run: python scripts/check_readme_numbers.py
+
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/web/package-lock.json
+      - name: Install
+        run: npm ci --prefix app/web
+      - name: npm audit
+        run: npm audit --prefix app/web --audit-level=high
+      - name: Vitest
+        run: npm test --prefix app/web
+      - name: Vitest coverage gate (src/lib)
+        run: npm run test:coverage --prefix app/web
+      - name: Typecheck
+        run: npx tsc -b
+        working-directory: app/web
+      - name: Build
+        run: npm run build --prefix app/web
+      - name: Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: app/web
+      - name: E2E smoke
+        run: npm run e2e
+        working-directory: app/web
+        env:
+          CI: "1"
+      - name: Upload E2E screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: app/web/e2e/screenshots
+          if-no-files-found: ignore
+
+  # Preview deploys are opt-in: they run on pull requests only, and only when
+  # the repository defines the VERCEL_TOKEN secret (forks and unconfigured
+  # repositories skip the deploy instead of failing). Linked Vercel projects
+  # also need VERCEL_ORG_ID/VERCEL_PROJECT_ID, or a committed .vercel link.
+  preview:
+    name: vercel preview
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Deploy preview
+        if: env.VERCEL_TOKEN != ''
+        run: npx vercel deploy --yes --token "$VERCEL_TOKEN"
+      - name: Secret absent
+        if: env.VERCEL_TOKEN == ''
+        run: echo "VERCEL_TOKEN is not configured; skipping the preview deploy."

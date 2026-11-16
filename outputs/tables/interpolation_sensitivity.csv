@@ -1,0 +1,9 @@
+interpolation,model,mae,mae_sd,quarter_label,point,lower,upper
+linear,seasonal_naive,30.1667,7.6848,2026Q3,388.0,256.37,519.63
+linear,seasonal_naive,30.1667,7.6848,2026Q4,262.0,130.37,393.63
+linear,seasonal_naive,30.1667,7.6848,2027Q1,101.0,0.0,232.63
+linear,seasonal_naive,30.1667,7.6848,2027Q2,340.0,208.37,471.63
+seasonal,seasonal_naive,30.1667,7.6848,2026Q3,388.0,264.69,511.31
+seasonal,seasonal_naive,30.1667,7.6848,2026Q4,262.0,138.69,385.31
+seasonal,seasonal_naive,30.1667,7.6848,2027Q1,101.0,0.0,224.31
+seasonal,seasonal_naive,30.1667,7.6848,2027Q2,340.0,216.69,463.31

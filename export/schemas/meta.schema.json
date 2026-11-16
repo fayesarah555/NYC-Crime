@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meta.schema.json",
+  "title": "meta.json",
+  "$comment": "Numbers are finite: the exporter validates with a finite type checker (NaN/Infinity are not JSON).",
+  "type": "object",
+  "required": [
+    "generated_by", "generated_at", "git_commit", "git_dirty",
+    "pipeline_version", "source_manifest_sha256", "schema_version",
+    "quarters_total", "missing_quarters", "ci_alpha", "periods", "totals",
+    "geo", "combined_borough", "sources", "caveats", "caveats_fr"
+  ],
+  "properties": {
+    "generated_by": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "git_commit": {"type": "string"},
+    "git_dirty": {"type": "boolean"},
+    "git_commit_note": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "pipeline_version": {"type": "string"},
+    "source_manifest_sha256": {"type": "string"},
+    "schema_version": {"type": "integer"},
+    "quarters_total": {"type": "integer", "minimum": 0},
+    "missing_quarters": {"type": "array", "items": {"type": "string"}},
+    "ci_alpha": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "periods": {
+      "type": "object",
+      "required": ["first", "last", "count", "missing", "labels"],
+      "properties": {
+        "first": {"type": "string"},
+        "last": {"type": "string"},
+        "count": {"type": "integer", "minimum": 0},
+        "missing": {"type": "array", "items": {"type": "string"}},
+        "labels": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": [
+        "crimes", "park_quarters", "long_rows", "parks", "parks_with_crimes"
+      ],
+      "properties": {
+        "crimes": {"type": "integer", "minimum": 0},
+        "park_quarters": {"type": "integer", "minimum": 0},
+        "long_rows": {"type": "integer", "minimum": 0},
+        "parks": {"type": "integer", "minimum": 0},
+        "parks_with_crimes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "geo": {
+      "type": "object",
+      "required": ["parks", "matched", "coverage_pct", "weighted_coverage_pct"],
+      "properties": {
+        "parks": {"type": "integer", "minimum": 0},
+        "matched": {"type": "integer", "minimum": 0},
+        "coverage_pct": {"type": "number"},
+        "weighted_coverage_pct": {"type": "number"}
+      }
+    },
+    "combined_borough": {
+      "type": "object",
+      "required": ["label", "parks_source", "parks_with_crimes"],
+      "properties": {
+        "label": {"type": "string"},
+        "parks_source": {"type": "integer", "minimum": 0},
+        "parks_with_crimes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sources": {"type": "array", "items": {"type": "string"}},
+    "caveats": {"type": "array", "items": {"type": "string"}},
+    "caveats_fr": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

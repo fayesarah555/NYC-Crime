@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "borough_type.schema.json",
+  "title": "borough_type.json",
+  "type": "object",
+  "required": ["crime_types", "boroughs"],
+  "properties": {
+    "crime_types": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "boroughs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["borough", "total", "counts"],
+        "properties": {
+          "borough": {"type": "string"},
+          "total": {"type": "integer", "minimum": 0},
+          "counts": {
+            "type": "object",
+            "additionalProperties": {"type": "integer", "minimum": 0}
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

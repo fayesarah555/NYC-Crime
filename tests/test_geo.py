@@ -5,14 +5,20 @@ from pathlib import Path
 
 import pandas as pd
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import etl.geo as geo  # noqa: E402
 from etl.geo import (  # noqa: E402
+    PAGE_SIZE,
     build_index,
     centroid,
     coverage,
+    fetch_properties,
     match_park,
     normalize_name,
+    park_identity,
 )
 
 
@@ -138,3 +144,75 @@ def test_empty_geometry_is_skipped_not_fatal():
     hit, kind = match_park("ROSE PARK", "MANHATTAN", index)
     assert kind == "signname"
     assert hit is not None
+
+
+def test_park_identity_prefers_gis_id_and_disambiguates_duplicates():
+    taken = set()
+    matched = {"park_id": "M110"}
+    assert park_identity("ROSE PARK", "MANHATTAN", matched, taken) == "M110"
+    # A second crime row landing on the same property gets its own key.
+    assert park_identity("ROSE PARK NORTH", "MANHATTAN", matched, taken) == (
+        "MANHATTAN:ROSE PARK NORTH"
+    )
+    # Unmatched parks still get a deterministic id.
+    assert park_identity("ADMIRAL PARK", "QUEENS", None, taken) == (
+        "QUEENS:ADMIRAL PARK"
+    )
+
+
+class FakeResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self.payload
+
+
+class FakeSession:
+    """Socrata stand-in; `ignore_offset` models an API that drops $offset."""
+
+    def __init__(self, rows, ignore_offset=False):
+        self.rows = rows
+        self.ignore_offset = ignore_offset
+
+    def get(self, url, params, timeout):
+        start = 0 if self.ignore_offset else params["$offset"]
+        return FakeResponse(self.rows[start:start + PAGE_SIZE])
+
+
+def test_fetch_properties_aborts_when_api_ignores_offset(tmp_path):
+    rows = [{"name311": f"PARK {i}"} for i in range(PAGE_SIZE)]
+    with pytest.raises(RuntimeError, match=r"ignores \$offset"):
+        fetch_properties(
+            url="fake",
+            cache_path=tmp_path / "cache.json",
+            refresh=True,
+            session=FakeSession(rows, ignore_offset=True),
+        )
+
+
+def test_fetch_properties_reads_a_long_result_set_under_the_cap(tmp_path, monkeypatch):
+    monkeypatch.setattr(geo, "MAX_OFFSET", PAGE_SIZE * 5)
+    rows = [{"name311": f"PARK {i}"} for i in range(PAGE_SIZE * 5 - 500)]
+    got = fetch_properties(
+        url="fake",
+        cache_path=tmp_path / "cache.json",
+        refresh=True,
+        session=FakeSession(rows),
+    )
+    assert len(got) == len(rows)
+
+
+def test_fetch_properties_aborts_at_max_offset(tmp_path, monkeypatch):
+    monkeypatch.setattr(geo, "MAX_OFFSET", PAGE_SIZE * 2)
+    rows = [{"name311": f"PARK {i}"} for i in range(PAGE_SIZE * 4)]
+    with pytest.raises(RuntimeError, match="MAX_OFFSET"):
+        fetch_properties(
+            url="fake",
+            cache_path=tmp_path / "cache.json",
+            refresh=True,
+            session=FakeSession(rows),
+        )

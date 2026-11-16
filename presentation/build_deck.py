@@ -35,12 +35,12 @@ TABLES_DIR = ROOT / "outputs" / "tables"
 WAREHOUSE_CSV = ROOT / "data" / "processed" / "park_crime_long.csv"
 WAREHOUSE_DB = ROOT / "data" / "warehouse.db"
 RAW_DIR = ROOT / "data" / "raw"
-WEB_DATA_DIR = ROOT / "app" / "web" / "public" / "data"
+WEB_DATA_DIR = ROOT / "app" / "web" / "src" / "data"
 WEB_DIST_DIR = ROOT / "app" / "web" / "dist" / "assets"
 VERCEL_JSON = ROOT / "vercel.json"
 SCRIPT_MD = OUT_DIR / "script_oral.md"
 DECK = OUT_DIR / "nyc_crime_deck.pptx"
-WEB_CAPTURE = ROOT / "docs" / "screenshots" / "web_dashboard.png"
+WEB_CAPTURE = ROOT / "docs" / "screenshots" / "web_dashboard.jpg"
 SITE_URL = "nyc-crimes.vercel.app"
 REPO_URL = "github.com/youcisla/NYC-Crime"
 
@@ -69,7 +69,9 @@ def seasonal_means():
     with WAREHOUSE_CSV.open(encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
             label = row["quarter_label"]
-            totals[label] = totals.get(label, 0) + int(row["count"])
+            if not row["count"]:
+                continue  # NULL : colonne absente du classeur, jamais un zéro
+            totals[label] = totals.get(label, 0) + float(row["count"])
     per_quarter = {}
     for label, total in totals.items():
         per_quarter.setdefault(label[-1], []).append(total)
@@ -104,8 +106,9 @@ def collected_tests():
 def bundle_sizes():
     """Taille gzip (Ko) de chaque paquet JS de app/web/dist, ou {} sans build web."""
     sizes = {}
-    if not WEB_DIST_DIR.exists():
-        return sizes
+    lock = ROOT / "app" / "web" / "package-lock.json"
+    if not WEB_DIST_DIR.exists() or WEB_DIST_DIR.stat().st_mtime < lock.stat().st_mtime:
+        return sizes  # pas de build, ou build plus ancien que les dépendances : tailles périmées
     for path in WEB_DIST_DIR.glob("*.js"):
         name = re.sub(r"-[\w-]{8}$", "", path.stem)  # retire le hash Vite (8 caractères)
         sizes[name] = sizes.get(name, 0) + len(gzip.compress(path.read_bytes(), 9)) / 1024
@@ -151,7 +154,10 @@ try:
     RATES = {row["borough"]: float(row["rate_per_100_acres"]) for row in read_rows("rate_by_borough.csv")}
     TOP_PARKS = read_rows("top_parks.csv")
     PROFILES = read_rows("cluster_profiles.csv")
-    ANOMALIES = read_rows("source_anomalies.csv")
+    ANOMALIES = EDA.get("source_anomalies", [])  # écarts TOTAL ≠ somme
+    MISSING_COLUMN_QUARTERS = EDA.get("missing_column_quarters", [])
+    MISSING_COLUMN_TYPES = EDA.get("missing_column_types", [])
+    MISSING_QUARTERS = EDA.get("missing_quarters") or [EDA["missing_quarter"]]
     SHARES = {(r["borough"], r["crime_type"]): float(r["share_pct"]) for r in read_rows("borough_type_share.csv")}
     SEASON = seasonal_means()
     WAREHOUSE = warehouse_counts()
@@ -508,20 +514,23 @@ def s05_parsing(prs, index):
     anomaly = ANOMALIES[0] if ANOMALIES else None
     rect(slide, 0.75, 4.45, 6.4, 1.95, WHITE, ACCENT)
     add_text(slide, 1.0, 4.6, 5.9, 0.3, "VÉRIFICATION D'INTÉGRITÉ : TOTAL PUBLIÉ = SOMME DES 7 TYPES", 11, ACCENT, bold=True)
+    lines = []
     if anomaly:
-        add_text(slide, 1.0, 5.0, 5.9, 1.3,
-                 f"{len(ANOMALIES)} violation : {anomaly['park'].title()}, "
-                 f"{workbook_quarter(anomaly['workbook'])} : TOTAL "
-                 f"{anomaly['total_recorded']} contre somme {anomaly['sum_computed']}.\n"
-                 "Ligne exclue et journalisée dans source_anomalies.csv ; "
-                 "par défaut, le parseur s'arrête et nomme la ligne.", 14, INK)
+        lines.append(
+            f"{len(ANOMALIES)} écart : {anomaly['park'].title()}, {anomaly['quarter']} : TOTAL "
+            f"{anomaly['total_recorded']} contre somme {anomaly['sum_computed']} → journalisé, "
+            "détail des 7 types conservé.")
+    if MISSING_COLUMN_QUARTERS:
+        lines.append(
+            f"Colonne {', '.join(MISSING_COLUMN_TYPES)} absente en {', '.join(MISSING_COLUMN_QUARTERS)} "
+            "→ valeur vide (NULL), jamais 0.")
+    add_text(slide, 1.0, 5.0, 5.9, 1.3, "\n".join(lines), 13, INK)
     labelled_box(slide, 7.6, 1.85, 5.0, 1.15, "Format large (source)",
                  "PARK | BOROUGH | MURDER | RAPE | … | TOTAL", title_size=13, detail_size=10)
     arrow(slide, 9.95, 3.08, 0.3, 0.4, down=True)
     labelled_box(slide, 7.6, 3.55, 5.0, 1.15, "Format long (entrepôt)",
                  "quarter_label | park | crime_type | count", title_size=13, detail_size=10)
-    source_rows = EDA["rows_total"] // 7 + len(ANOMALIES)
-    stat(slide, 7.6, 4.95, 2.4, fr(source_rows), "lignes source", 24)
+    stat(slide, 7.6, 4.95, 2.4, fr(EDA["park_quarters"]), "lignes source (parc × trimestre)", 24)
     stat(slide, 10.1, 4.95, 2.5, fr(EDA["rows_total"]), f"lignes longues, {fr(EDA['share_zero_rows_pct'], 0)} % de zéros conservés", 24)
     source_line(slide, "Source : etl/parse.py · outputs/tables/source_anomalies.csv · eda_stats.json")
     finish(slide, index)
@@ -563,12 +572,13 @@ def s07_pitfalls(prs, index):
         ("Couverture mouvante",
          f"{EDA['new_parks'][0].title()} seulement à partir de {year}Q1 → toute comparaison "
          "annuelle est donnée avec et sans ce parc (coverage_gaps.csv)."),
-        ("Trimestre manquant",
-         f"{EDA['missing_quarter']} absent → interpolé linéairement pour le modèle, "
-         "jamais traité comme un zéro."),
+        ("Données manquantes",
+         f"{', '.join(MISSING_QUARTERS)} absent → interpolé pour le modèle seulement. "
+         f"Colonne {', '.join(MISSING_COLUMN_TYPES) or '—'} absente en "
+         f"{', '.join(MISSING_COLUMN_QUARTERS) or '—'} → NULL. Jamais un zéro."),
         ("Total incohérent",
          f"{ANOMALIES[0]['park'].title() if ANOMALIES else 'Aucune ligne'} : TOTAL ≠ somme "
-         "→ ligne exclue et journalisée (source_anomalies.csv)."),
+         "→ journalisé, test de sensibilité (source_anomaly_sensitivity.csv)."),
         ("Géolocalisation partielle",
          f"{fr(no_coords, 1)} % des parcs sans coordonnées → signalé dans l'interface, pas masqué."),
     ]
@@ -599,7 +609,7 @@ def s09_locate(prs, index):
     slide = new_slide(prs, "Résultats · Localiser", "Le volume ment, la surface rectifie")
     add_text(slide, 0.75, 1.75, 5.4, 0.3, "TOP PARCS EN VOLUME", 11, ACCENT, bold=True)
     rows = [["Parc", "Arrond.", "Crimes"]] + [
-        [park_name(p["park"]), p["borough"].title(), fr(int(p["total"]))] for p in TOP_PARKS[:5]
+        [park_name(p["park"]), p["borough"].title(), fr(float(p["total"]))] for p in TOP_PARKS[:5]
     ]
     add_table(slide, 0.75, 2.1, 5.6, rows, [3.2, 1.35, 1.05], size=12, row_h=0.4)
     add_text(slide, 6.75, 1.75, 5.9, 0.3, "CRIMES POUR 100 ACRES", 11, ACCENT, bold=True)
@@ -612,77 +622,98 @@ def s09_locate(prs, index):
     rect(slide, 6.75, 5.05, 5.85, 1.2, WHITE, ACCENT)
     add_text(slide, 7.0, 5.17, 5.4, 1.0,
              f"Arrondissement × type : χ² = {fr(EDA['chi2_statistic'], 1)} ; ddl = {EDA['chi2_dof']} ; "
-             f"p < 1e-200 ; V de Cramér = {fr(EDA['cramers_v'], 3)} → liaison réelle mais faible.\n"
+             f"{EDA.get('chi2_p_display', 'p < 1e-200')} ; V de Cramér = {fr(EDA['cramers_v'], 3)} → liaison réelle mais faible.\n"
              f"Manhattan : {fr(SHARES[('MANHATTAN', 'GRAND LARCENY')], 1)} % de vols simples · "
              f"Bronx : {fr(SHARES[('BRONX', 'ROBBERY')], 1)} % de vols qualifiés", 13, INK)
     finish(slide, index)
 
 
+MODEL_NAMES = {
+    "seasonal_naive": "Règle saisonnière naïve",
+    "holt_winters": "Holt-Winters",
+    "sarimax": "SARIMAX",
+    "sarimax_log": "SARIMAX (log)",
+    "glm_poisson": "GLM de Poisson",
+}
+TYPE_FR = {
+    "robbery": "vols avec violence", "grand_larceny": "vols simples",
+    "felony_assault": "agressions", "grand_larceny_auto": "vols de véhicule",
+    "burglary": "cambriolages", "murder": "homicides", "rape": "viols",
+}
+NUMBER_WORDS = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six"}
+
+
+def model_beats_naive():
+    return CITY["selected_model"] != "seasonal_naive" and CITY["improvement_pct"] > 0
+
+
 def s10_forecast(prs, index):
-    slide = new_slide(prs, "Résultats · Prévoir", "Battre la règle naïve, honnêtement")
+    title = ("Prévoir : le modèle bat la règle simple" if model_beats_naive()
+             else "Prévoir : aucun modèle ne bat la règle simple")
+    slide = new_slide(prs, "Résultats · Prévoir", title)
     window = CITY["backtest_window"]
     add_text(slide, 0.75, 1.75, 5.6, 0.3,
              f"BACKTEST SUR {CITY['backtest_quarters']} TRIMESTRES ({window[0]} → {window[-1]})", 11, ACCENT, bold=True)
     metrics = CITY["backtest_metrics"]
-    names = {"seasonal_naive": "Saisonnier naïf (réf.)", "holt_winters": "Holt-Winters",
-             "sarimax": "SARIMAX (1,1,1)(1,1,0)₄"}
+    order = sorted(metrics, key=lambda name: metrics[name]["mae"])
     rows = [["Modèle", "MAE", "MAPE"]]
-    order = ["seasonal_naive", "holt_winters", "sarimax"]
     for name in order:
-        rows.append([names[name], fr(metrics[name]["mae"], 2), f"{fr(metrics[name]['mape'], 2)} %"])
+        rows.append([MODEL_NAMES.get(name, name), fr(metrics[name]["mae"], 1), f"{fr(metrics[name]['mape'], 1)} %"])
     selected = order.index(CITY["selected_model"]) + 1
-    add_table(slide, 0.75, 2.1, 5.6, rows, [3.3, 1.1, 1.2], size=13, row_h=0.45, accent_rows=(selected,))
-    stat(slide, 0.75, 4.15, 2.7, f"−{fr(CITY['improvement_pct'], 1)} %", "d'erreur contre la référence", 30)
+    add_table(slide, 0.75, 2.1, 5.6, rows, [3.3, 1.1, 1.2], size=12, row_h=0.38, accent_rows=(selected,))
+    table_bottom = 2.1 + 0.38 * len(rows)
+    if model_beats_naive():
+        stat(slide, 0.75, table_bottom + 0.25, 2.7, f"−{fr(CITY['improvement_pct'], 1)} %",
+             "d'erreur contre la règle simple", 28)
+    else:
+        best = CITY.get("best_challenger") or {"model": order[1]}
+        challenger = best["model"] if isinstance(best, dict) else best
+        dm_p = metrics.get(challenger, {}).get("dm_p")
+        label = f"meilleur challenger ({MODEL_NAMES.get(challenger, challenger)})"
+        if dm_p is not None:
+            label += f" : différence non significative (p = {fr(dm_p, 2)})"
+        stat(slide, 0.75, table_bottom + 0.25, 2.7, "≈ 0 %", label, 28, label_size=11)
     first = CITY["forecast"][0]
-    stat(slide, 3.55, 4.15, 2.8, fr(first["point"]),
-         f"crimes prévus en {first['quarter_label']}, IC 95 % [{fr(first['lower'])} ; {fr(first['upper'])}]", 30)
+    stat(slide, 3.55, table_bottom + 0.25, 2.8, fr(first["point"]),
+         f"crimes prévus en {first['quarter_label']}, IC 95 % [{fr(first['lower'])} ; {fr(first['upper'])}]", 28,
+         label_size=11)
     place_picture(slide, FIG_DIR / "fig07_forecast.png", 6.7, 1.75, 5.9, 3.55)
     rect(slide, 6.7, 5.45, 5.9, 0.85, WHITE, ACCENT)
     add_text(slide, 6.95, 5.56, 5.45, 0.7,
-             "Réserves : modèle choisi sur la même fenêtre que celle qu'il rapporte, donc un "
-             "avantage optimiste ; prévision gonflée par l'ajout de Central Park.", 13, INK)
+             "Réserves : choix du modèle fait sur ces mêmes trimestres de test ; "
+             "prévision gonflée par l'ajout de Central Park.", 13, INK)
     source_line(slide, "Source : outputs/metrics/model_metrics.json · analysis/model.py")
     finish(slide, index)
 
 
 def cluster_name(profile, profiles):
+    """Nom lisible d'un groupe : taille relative + type de délit dominant."""
     biggest = max(profiles, key=lambda p: float(p["mean_acres"]))
-    violent = max(profiles, key=lambda p: float(p["share_murder"]))
-    if profile is biggest:
-        return "Grands parcs"
-    if profile is violent:
-        return "Sites violents"
-    if profile["top_type"] == "grand_larceny":
-        return "Proximité, vol simple"
-    return "Proximité, vol qualifié"
+    size = "Grands parcs" if profile is biggest else "Parcs de quartier"
+    return f"{size}, surtout des {TYPE_FR.get(profile['top_type'], profile['top_type'])}"
 
 
 def s11_clusters(prs, index):
-    slide = new_slide(prs, "Résultats · Typologie", "Quatre profils de parcs")
+    k = int(CLUSTERS["selected_k"])
+    slide = new_slide(prs, "Résultats · Typologie", f"{NUMBER_WORDS.get(k, k)} profils de parcs")
     place_picture(slide, FIG_DIR / "fig08_clusters.png", 0.75, 1.75, 6.2, 4.3)
     add_text(slide, 0.75, 6.15, 6.2, 0.5,
-             f"KMeans sur {fr(CLUSTERS['n_parks'])} parcs (au moins 5 crimes), k choisi par silhouette "
-             f"entre 2 et 6 → k = {CLUSTERS['selected_k']}, silhouette {fr(CLUSTERS['silhouette'], 3)}",
+             f"KMeans sur {fr(CLUSTERS['n_parks'])} parcs, k choisi par silhouette "
+             f"→ k = {k}, silhouette {fr(CLUSTERS['silhouette'], 3)} (groupes peu séparés)",
              12, MUTED)
-    ordered = sorted(PROFILES, key=lambda p: -int(p["total_crimes"]))
+    ordered = sorted(PROFILES, key=lambda p: -float(p["total_crimes"]))
+    card_h = min(1.3, 4.6 / len(ordered) - 0.15)
     for position, profile in enumerate(ordered):
-        y = 1.8 + position * 1.2
-        name = cluster_name(profile, PROFILES)
-        if name == "Grands parcs":
-            detail = (f"{profile['n_parks']} parcs · {fr(float(profile['mean_acres']))} acres en moyenne · "
-                      f"{fr(int(profile['total_crimes']))} crimes ({fr(int(profile['total_crimes']) / EDA['total_crimes'] * 100, 0)} % du total)")
-        elif name == "Sites violents":
-            detail = (f"{profile['n_parks']} parcs · {fr(float(profile['share_murder']) * 100, 0)} % d'homicides · "
-                      f"{fr(float(profile['share_felony_assault']) * 100, 0)} % d'agressions")
-        elif name == "Proximité, vol simple":
-            detail = (f"{profile['n_parks']} parcs · {fr(float(profile['share_grand_larceny']) * 100, 0)} % de vols simples")
-        else:
-            detail = (f"{profile['n_parks']} petits parcs ({fr(float(profile['mean_acres']), 1)} acres) · "
-                      f"{fr(float(profile['share_robbery']) * 100, 0)} % de vols qualifiés")
-        rect(slide, 7.3, y, 5.3, 1.05, LIGHT)
-        rect(slide, 7.3, y, 0.09, 1.05, ACCENT, shape=MSO_SHAPE.RECTANGLE)
-        add_text(slide, 7.6, y + 0.12, 4.9, 0.35, name, 16, ACCENT, bold=True)
-        add_text(slide, 7.6, y + 0.5, 4.9, 0.5, detail, 12, INK)
+        y = 1.8 + position * (card_h + 0.15)
+        top = profile["top_type"]
+        crimes = float(profile["total_crimes"])
+        detail = (f"{profile['n_parks']} parcs · {fr(float(profile['mean_acres']))} acres en moyenne · "
+                  f"{fr(crimes)} crimes ({fr(crimes / EDA['total_crimes'] * 100, 0)} % du total) · "
+                  f"{fr(float(profile['share_' + top]) * 100, 0)} % de {TYPE_FR.get(top, top)}")
+        rect(slide, 7.3, y, 5.3, card_h, LIGHT)
+        rect(slide, 7.3, y, 0.09, card_h, ACCENT, shape=MSO_SHAPE.RECTANGLE)
+        add_text(slide, 7.6, y + 0.12, 4.9, 0.35, cluster_name(profile, PROFILES), 16, ACCENT, bold=True)
+        add_text(slide, 7.6, y + 0.52, 4.85, card_h - 0.55, detail, 12, INK)
     finish(slide, index)
 
 
@@ -706,7 +737,7 @@ def s12_architecture(prs, index):
     add_bullets(slide, 10.3, 1.8, 2.4, 4.6, [
         ("Contrat. ", "chaque couche ne lit que les fichiers de la précédente."),
         ("Orchestration. ", "Makefile : make all, make all-web."),
-        ("Git. ", f"données brutes non versionnées ; seuls les JSON du site ({fr(sum(WEB_JSON.values()) / 1024)} Ko) sont commités."),
+        ("Git. ", f"données brutes non versionnées ; JSON du site ({fr(sum(WEB_JSON.values()) / 1024)} Ko) commités ; images et pptx via Git LFS."),
     ], size=13, space_after=12)
     finish(slide, index)
 
@@ -741,20 +772,22 @@ def s14_contract(prs, index):
     add_text(slide, 0.75, 1.8, 3.6, 0.3, "EXPORT/EXPORT_WEB.PY", 11, ACCENT, bold=True)
     rows = [["Fichier", "Ko"]] + [[name, fr(size / 1024, 1)] for name, size in WEB_JSON.items()]
     rows.append(["Total", fr(sum(WEB_JSON.values()) / 1024)])
-    add_table(slide, 0.75, 2.15, 3.6, rows, [2.5, 1.1], size=12, row_h=0.38, bold_rows=(len(rows) - 1,))
+    add_table(slide, 0.75, 2.15, 3.6, rows, [2.5, 1.1], size=12, row_h=min(0.38, 4.4 / len(rows)),
+              bold_rows=(len(rows) - 1,))
     add_text(slide, 4.75, 1.8, 3.9, 0.3, "L'EXPORT ÉCHOUE SI…", 11, ACCENT, bold=True)
     add_bullets(slide, 4.75, 2.15, 3.9, 2.6, [
         "total d'un parc ≠ somme de ses types",
         "total citywide ≠ total de l'analyse",
+        "un fichier ne respecte pas son schéma JSON",
         "poids > 2 Mo (MAX_PAYLOAD_BYTES)",
-    ], size=14, space_after=10)
-    add_text(slide, 4.75, 3.9, 3.9, 0.3, "CONTRAT TYPÉ CÔTÉ CLIENT", 11, ACCENT, bold=True)
-    code_box(slide, 4.75, 4.25, 3.9, 1.6,
-             "// app/web/src/lib/data.ts\n"
-             "export interface Park {\n"
-             "  park: string; lat: number | null;\n"
-             "  total: number; cluster: number | null;\n"
-             "  counts: Record<string, number>; }", 10)
+    ], size=14, space_after=8)
+    schemas = sorted((ROOT / "export" / "schemas").glob("*.schema.json"))
+    add_text(slide, 4.75, 4.0, 3.9, 0.3, "CONTRAT ÉCRIT ET VÉRIFIÉ", 11, ACCENT, bold=True)
+    code_box(slide, 4.75, 4.35, 3.9, 1.5,
+             f"export/schemas/  ({len(schemas)} schémas)\n"
+             "jsonschema.validate(payload,\n"
+             "                    schema)\n"
+             "→ échec = build arrêté", 11)
     rows = [["", "API REST", "JSON statique"],
             ["Coût", "serveur", "0"],
             ["Latence", "requête + BDD", "CDN"],
@@ -771,8 +804,12 @@ def s14_contract(prs, index):
 def s15_deploy(prs, index):
     slide = new_slide(prs, "Déploiement", "Du push Git à la production")
     config = json.loads(VERCEL_JSON.read_text(encoding="utf-8"))
-    config.pop("$schema", None)
-    code_box(slide, 0.75, 1.8, 5.6, 2.3, "// vercel.json\n" + json.dumps(config, indent=2), 12)
+    shown = {key: config[key] for key in ("installCommand", "buildCommand", "outputDirectory") if key in config}
+    header_keys = sorted({h["key"] for block in config.get("headers", []) for h in block["headers"]})
+    code = "// vercel.json (extrait)\n" + json.dumps(shown, indent=2)
+    if header_keys:
+        code += "\n// en-têtes HTTP : " + ", ".join(header_keys)
+    code_box(slide, 0.75, 1.8, 5.6, 2.3, code, 11)
     flow(slide, [
         ("git push", "main"),
         ("npm ci", "package-lock"),
@@ -783,9 +820,9 @@ def s15_deploy(prs, index):
     add_bullets(slide, 6.75, 1.8, 5.85, 2.4, [
         ("Aucun Python au build. ", "Les JSON commités suffisent ; .vercelignore exclut /data et .venv."),
         ("Deux rythmes. ", "Chaîne data locale (make all), une fois par trimestre ; chaîne web à chaque commit."),
-        ("Contributions ", "par pull request."),
+        ("CI GitHub Actions ", "à chaque push et pull request, avant toute fusion (slide suivante)."),
     ], size=14, space_after=10)
-    source_line(slide, "Source : vercel.json · .vercelignore · app/web/package.json")
+    source_line(slide, "Source : vercel.json · .vercelignore · .github/workflows/ci.yml")
     finish(slide, index)
 
 
@@ -793,18 +830,20 @@ def s16_quality(prs, index):
     slide = new_slide(prs, "Qualité", f"{sum(TESTS.values())} tests et des étapes qui refusent les données fausses")
     add_text(slide, 0.75, 1.8, 4.6, 0.3, "PYTEST · TESTS COLLECTÉS PAR FICHIER", 11, ACCENT, bold=True)
     rows = [["Fichier", "Tests"]] + [[name, str(count)] for name, count in sorted(TESTS.items())]
-    add_table(slide, 0.75, 2.15, 4.6, rows, [3.6, 1.0], size=12, row_h=0.42)
+    row_h = min(0.42, 4.5 / len(rows))
+    add_table(slide, 0.75, 2.15, 4.6, rows, [3.6, 1.0], size=12 if row_h > 0.36 else 10, row_h=row_h)
     add_text(slide, 5.8, 1.8, 6.8, 0.3, "CASCADE D'ARRÊTS AUTOMATIQUES", 11, ACCENT, bold=True)
     gates = [("Signature ZIP", "download.py"), ("sha256", "manifest.json"),
-             ("TOTAL = somme", "parse.py"), ("Vérifications", "export_web.py"),
+             ("TOTAL = somme", "parse.py"), ("Schémas JSON", "export_web.py"),
              ("Typage TS", "tsc -b")]
     for position, (name, where) in enumerate(gates):
         x = 5.8 + position * 0.25
-        y = 2.2 + position * 0.62
-        labelled_box(slide, x, y, 3.6, 0.5, f"{name}  ·  {where}", title_size=12)
-    add_bullets(slide, 5.8, 5.4, 6.8, 1.2, [
-        ("Front. ", "Vitest + Testing Library (filters, FilterPanel, ForecastTab) ; lint oxlint."),
-        ("Reproductible. ", "SEED = 42 ; après reconstruction complète, git status reste vide."),
+        y = 2.2 + position * 0.55
+        labelled_box(slide, x, y, 3.6, 0.45, f"{name}  ·  {where}", title_size=12)
+    add_bullets(slide, 5.8, 5.0, 6.8, 1.6, [
+        ("CI GitHub Actions. ", "ruff, mypy, pytest (Python 3.11 et 3.14), Vitest, build, "
+         "tests de bout en bout Playwright, accessibilité (axe), gitleaks."),
+        ("Reproductible. ", "SEED = 42 ; manifeste verrouillé (manifest.lock.json) : mêmes entrées, mêmes résultats."),
     ], size=13, space_after=6)
     finish(slide, index)
 
@@ -813,16 +852,16 @@ def s17_security(prs, index):
     slide = new_slide(prs, "Sécurité & performance", "Le site statique comme choix de sécurité et de vitesse")
     add_text(slide, 0.75, 1.8, 5.6, 0.3, "SÉCURITÉ", 11, ACCENT, bold=True)
     add_bullets(slide, 0.75, 2.15, 5.6, 4.3, [
-        "Aucun serveur, aucune base exposée, aucun secret (.env* dans .gitignore)",
-        "Seul appel réseau à l'exécution : les tuiles OpenStreetMap",
-        "Textes affichés via React (échappement automatique) : pas d'injection par la donnée",
+        "Aucun serveur, aucune base exposée, aucun secret (.env* ignorés, gitleaks en CI)",
+        "Content-Security-Policy : le navigateur n'accepte que nos scripts et les tuiles OpenStreetMap",
+        "Textes et infobulles échappés : pas d'injection par la donnée",
         "Intégrité des entrées : signature ZIP + sha256",
-        "Installation reproductible avec npm ci",
+        "npm ci, npm audit, pip-audit et Dependabot",
     ], size=14, space_after=9)
     add_text(slide, 6.75, 1.8, 5.85, 0.3, "PERFORMANCE", 11, ACCENT, bold=True)
     add_bullets(slide, 6.75, 2.15, 5.85, 1.3, [
-        "Filtres recalculés côté client (useMemo), sans aller-retour réseau",
-        "Bundle découpé par manualChunks (Vite), mis en cache séparément",
+        "Filtres recalculés dans le navigateur, sans aller-retour réseau",
+        "Bundle découpé (manualChunks) ; carte et onglet Prévisions chargés à la demande",
     ], size=14, space_after=8)
     wanted = [("react", "React"), ("leaflet", "Leaflet"), ("recharts", "Recharts"),
               ("astryx", "Astryx"), ("index", "Application + données")]
@@ -834,7 +873,7 @@ def s17_security(prs, index):
     else:
         add_text(slide, 6.75, 3.5, 5.85, 0.6, "Tailles de bundle : lancer make web-build puis make deck.", 12, MUTED, italic=True)
     add_text(slide, 6.75, 5.85, 5.85, 0.6,
-             "Prochaine étape : charger les onglets Prévisions et Méthode à la demande.", 13, ACCENT, bold=True)
+             "Fichiers du build mis en cache un an (Cache-Control immutable).", 13, ACCENT, bold=True)
     finish(slide, index)
 
 
@@ -918,12 +957,13 @@ def s21_limits(prs, index):
         ["Plaintes déclarées, pas faits établis", "Croiser avec les données d'arrestations NYPD"],
         ["Modèle choisi sur sa propre fenêtre de test",
          "Validation glissante (rolling origin) sur une fenêtre tenue à part"],
-        [f"Intervalle gaussien sur des comptages (borne basse {signed(lower, 1)})",
-         "Tronquer à 0, ou modèle de Poisson / binomiale négative"],
+        [f"Intervalle gaussien sur des comptages (borne basse {signed(lower, 1)})"
+         if lower < 0 else "Intervalle gaussien appliqué à des comptages",
+         "Modèle de Poisson / binomiale négative"],
         [f"{', '.join(b.title() for b in MODEL.get('skipped_boroughs', ['Staten Island', 'Brooklyn/Queens']))} hors prévision par arrondissement",
          "Modèle hiérarchique par arrondissement"],
-        ["Pas de CI de tests ; dépendances Python non épinglées",
-         "GitHub Actions (pytest + vitest) ; versions épinglées"],
+        ["Dépendances Python déclarées sans version figée (pyproject.toml)",
+         "Fichier de verrouillage (pip-tools ou uv)"],
     ]
     add_table(slide, 0.75, 1.85, 11.85, rows, [6.2, 5.65], size=13, row_h=0.66)
     finish(slide, index)
@@ -937,7 +977,12 @@ def s22_conclusion(prs, index):
         ("Localiser", f"× {fr(RATES['MANHATTAN'] / RATES['STATEN ISLAND'], 0)}",
          f"Manhattan {fr(RATES['MANHATTAN'], 1)} contre Staten Island {fr(RATES['STATEN ISLAND'], 1)} crimes / 100 acres"),
         ("Prévoir", f"−{fr(CITY['improvement_pct'], 0)} %",
-         f"d'erreur pour SARIMAX contre la règle naïve (MAE {fr(CITY['selected_mae'], 2)} contre {fr(CITY['baseline_mae'], 2)})"),
+         f"d'erreur pour {MODEL_NAMES.get(CITY['selected_model'], CITY['selected_model'])} contre la règle "
+         f"simple (MAE {fr(CITY['selected_mae'], 1)} contre {fr(CITY['baseline_mae'], 1)})")
+        if model_beats_naive() else
+        ("Prévoir", f"± {fr(CITY['selected_mae'])}",
+         "crimes d'erreur par trimestre : la règle « même trimestre l'an dernier » fait aussi "
+         "bien que les modèles testés"),
     ]
     for position, (name, value, detail) in enumerate(answers):
         x = 0.75 + position * 4.0

@@ -1,31 +1,29 @@
 // Pure filter and aggregation helpers shared by every dashboard view.
-// The static export has all-period park totals only, so the quarter range
-// filters the city/borough series; park-level views ignore it by necessity.
+// Every count derives from the park x quarter x type cube, so the quarter
+// range and the type/borough filters mean the same thing in all four views.
+
+import type {Cube} from './data';
+import {fmtFixed} from './format'
 
 export interface Filters {
   boroughs: string[];
   types: string[];
-  /** Inclusive index range into `SeriesData.quarters`. */
+  /** Inclusive index range into `Cube.quarters`. */
   range: [number, number];
   query: string;
 }
 
 export interface ParkRow {
+  park_id: string;
   park: string;
   borough: string;
   lat: number | null;
   lon: number | null;
+  acres: number | null;
   total: number;
   dominant_type: string;
   cluster: number | null;
   counts: Record<string, number>;
-}
-
-export interface SeriesData {
-  quarters: string[];
-  city: number[];
-  city_by_type: Record<string, number[]>;
-  boroughs: Record<string, number[]>;
 }
 
 export const CRIME_TYPES = [
@@ -76,13 +74,21 @@ export function yearAgo(quarter: string): string {
 }
 
 /**
- * BROOKLYN/QUEENS rows belong to both boroughs, so either selection keeps
- * them; filtering once means no duplicate when both are selected.
+ * BROOKLYN/QUEENS is its own source label (4 parks), so selecting it returns
+ * exactly those 4 parks and not BROOKLYN + QUEENS's 433: its own series (114
+ * crimes) backs the label, and widening the park set would make the KPI
+ * contradict the trend. BROOKLYN or QUEENS alone still keep the combined
+ * parks, because the source files them under both; filtering once means no
+ * duplicate when both are selected.
  */
 export function matchesBorough(borough: string, selected: string[]): boolean {
   if (selected.length === 0) return true;
   if (borough === 'BROOKLYN/QUEENS') {
-    return selected.includes('BROOKLYN') || selected.includes('QUEENS');
+    return (
+      selected.includes('BROOKLYN/QUEENS') ||
+      selected.includes('BROOKLYN') ||
+      selected.includes('QUEENS')
+    );
   }
   return selected.includes(borough);
 }
@@ -108,19 +114,79 @@ export function dominantType(park: ParkRow, types: string[]): string {
   return best;
 }
 
-export function filterParks(parks: ParkRow[], filters: Filters): ParkRow[] {
+/** Quarter labels for the slider range, clamped to the shared index. */
+export function quarterWindow(
+  cube: Cube,
+  range: [number, number],
+): string[] {
+  const max = cube.quarters.length - 1;
+  const start = Math.max(0, Math.min(range[0], max));
+  const end = Math.max(start, Math.min(range[1], max));
+  return cube.quarters.slice(start, end + 1);
+}
+
+/** Per-type counts for one park_id inside the quarter window; null is missing. */
+export function parkCounts(
+  cube: Cube,
+  parkId: string,
+  window: string[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const type of cube.crime_types) counts[type] = 0;
+  const cells = cube.parks[parkId];
+  if (cells === undefined) return counts;
+  for (const quarter of window) {
+    const cell = cells[quarter];
+    if (cell === undefined) continue;
+    cube.crime_types.forEach((type, index) => {
+      const value = cell[index];
+      if (value !== null && value !== undefined) {
+        counts[type] = (counts[type] ?? 0) + value;
+      }
+    });
+  }
+  return counts;
+}
+
+/** A park row whose counts and total cover the filter's quarter window. */
+function windowRow(cube: Cube, park: ParkRow, window: string[]): ParkRow {
+  const counts = parkCounts(cube, park.park_id, window);
+  return {
+    ...park,
+    counts,
+    total: Object.values(counts).reduce((sum, value) => sum + value, 0),
+  };
+}
+
+function matchesQuery(park: ParkRow, query: string): boolean {
+  return query === '' || normalizeText(park.park).includes(query);
+}
+
+/** Selected parks (window-scoped counts) with at least one selected crime. */
+export function filterParks(
+  parks: ParkRow[],
+  filters: Filters,
+  cube: Cube,
+): ParkRow[] {
+  const window = quarterWindow(cube, filters.range);
   const query = normalizeText(filters.query).trim();
-  return parks.filter(
-    park =>
-      matchesBorough(park.borough, filters.boroughs) &&
-      selectedCount(park, filters.types) > 0 &&
-      (query === '' || normalizeText(park.park).includes(query)),
-  );
+  const rows: ParkRow[] = [];
+  for (const park of parks) {
+    if (!matchesBorough(park.borough, filters.boroughs)) continue;
+    if (!matchesQuery(park, query)) continue;
+    const row = windowRow(cube, park, window);
+    if (selectedCount(row, filters.types) > 0) rows.push(row);
+  }
+  return rows;
 }
 
 /** Parks drawn on the map: coordinates present and a positive selected total. */
-export function mapParks(parks: ParkRow[], filters: Filters): ParkRow[] {
-  return filterParks(parks, filters).filter(
+export function mapParks(
+  parks: ParkRow[],
+  filters: Filters,
+  cube: Cube,
+): ParkRow[] {
+  return filterParks(parks, filters, cube).filter(
     park => park.lat !== null && park.lon !== null,
   );
 }
@@ -129,85 +195,68 @@ export function mapParks(parks: ParkRow[], filters: Filters): ParkRow[] {
 export function parksWithoutCoordinates(
   parks: ParkRow[],
   filters: Filters,
+  cube: Cube,
 ): number {
-  return filterParks(parks, filters).filter(
+  return filterParks(parks, filters, cube).filter(
     park => park.lat === null || park.lon === null,
   ).length;
 }
 
 /**
- * Parks drawn nowhere because the selection leaves them at zero crimes.
- * The export only holds the 792 parks ever hit, so the 363 never-hit parks
- * cannot be counted here (no row, no coordinates).
+ * Parks drawn nowhere because the selection leaves them at zero crimes in the
+ * quarter window. The export only holds the 792 parks ever hit, so the 363
+ * never-hit parks cannot be counted here (no row, no coordinates).
  */
-export function zeroCrimeParks(parks: ParkRow[], filters: Filters): number {
+export function zeroCrimeParks(
+  parks: ParkRow[],
+  filters: Filters,
+  cube: Cube,
+): number {
+  const window = quarterWindow(cube, filters.range);
   const query = normalizeText(filters.query).trim();
   return parks.filter(
     park =>
       matchesBorough(park.borough, filters.boroughs) &&
-      (query === '' || normalizeText(park.park).includes(query)) &&
+      matchesQuery(park, query) &&
       park.lat !== null &&
       park.lon !== null &&
-      selectedCount(park, filters.types) === 0,
+      selectedCount(windowRow(cube, park, window), filters.types) === 0,
   ).length;
 }
 
-/** Inclusive quarter labels for the slider range, clamped to the series. */
-export function quarterLabels(
-  series: SeriesData,
-  range: [number, number],
-): string[] {
-  const max = series.quarters.length - 1;
-  const start = Math.max(0, Math.min(range[0], max));
-  const end = Math.max(start, Math.min(range[1], max));
-  return series.quarters.slice(start, end + 1);
-}
-
-/** Quarterly crimes for the city, or the sum of the selected borough series. */
-export function trendData(
-  series: SeriesData,
-  filters: Filters,
-): {quarter: string; crimes: number}[] {
-  return quarterLabels(series, filters.range).map(quarter => {
-    const index = series.quarters.indexOf(quarter);
-    let crimes = series.city[index];
-    if (filters.boroughs.length > 0) {
-      crimes = filters.boroughs.reduce(
-        (sum, borough) => sum + (series.boroughs[borough]?.[index] ?? 0),
-        0,
-      );
-    }
-    return {quarter, crimes};
-  });
+export interface TrendPoint {
+  quarter: string;
+  crimes: number;
 }
 
 /**
- * Quarterly totals the change KPI compares: borough sums when boroughs are
- * selected, else the selected crime types, else the all-type city series.
- * shortcut: no borough x type x quarter export, so a borough selection wins
- * over the type selection; upgrade if the export gains that breakdown.
+ * Quarterly trend honouring every filter: borough x type x quarter derived
+ * from the cube, so selecting types and boroughs together stays exact.
  */
-export function changeSeries(
-  series: SeriesData,
+export function trendData(
+  parks: ParkRow[],
   filters: Filters,
-): {quarter: string; crimes: number}[] {
-  return quarterLabels(series, filters.range).map(quarter => {
-    const index = series.quarters.indexOf(quarter);
-    if (filters.boroughs.length > 0) {
-      const crimes = filters.boroughs.reduce(
-        (sum, borough) => sum + (series.boroughs[borough]?.[index] ?? 0),
-        0,
-      );
-      return {quarter, crimes};
+  cube: Cube,
+): TrendPoint[] {
+  const window = quarterWindow(cube, filters.range);
+  const selected = filterParks(parks, filters, cube).map(row => row.park_id);
+  const typeIndexes = cube.crime_types
+    .map((type, index) => (filters.types.includes(type) ? index : -1))
+    .filter(index => index >= 0);
+  return window.map(quarter => {
+    let crimes = 0;
+    for (const parkId of selected) {
+      const cell = cube.parks[parkId]?.[quarter];
+      if (cell === undefined) continue;
+      const indexes = filters.types.length === 0
+        ? cell.map((_, index) => index)
+        : typeIndexes;
+      for (const index of indexes) {
+        const value = cell[index];
+        if (value !== null && value !== undefined) crimes += value;
+      }
     }
-    if (filters.types.length > 0) {
-      const crimes = filters.types.reduce(
-        (sum, type) => sum + (series.city_by_type[type]?.[index] ?? 0),
-        0,
-      );
-      return {quarter, crimes};
-    }
-    return {quarter, crimes: series.city[index]};
+    return {quarter, crimes};
   });
 }
 
@@ -223,17 +272,18 @@ export interface Kpis {
 export function computeKpis(
   parks: ParkRow[],
   filters: Filters,
-  series: SeriesData,
+  cube: Cube,
 ): Kpis {
-  const rows = filterParks(parks, filters);
+  const rows = filterParks(parks, filters, cube);
   const total = rows.reduce(
     (sum, park) => sum + selectedCount(park, filters.types),
     0,
   );
 
   let topType: string | null = null;
-  if (total > 0) {
-    const pool = filters.types.length ? filters.types : Object.keys(rows[0].counts);
+  const firstRow = rows[0];
+  if (total > 0 && firstRow) {
+    const pool = filters.types.length ? filters.types : Object.keys(firstRow.counts);
     const totals = new Map<string, number>();
     for (const type of pool) {
       const count = rows.reduce(
@@ -243,11 +293,13 @@ export function computeKpis(
       if (count > 0) totals.set(type, count);
     }
     const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-    topType = ranked.length > 0 ? ranked[0][0] : null;
+    const best = ranked[0];
+    topType = best ? best[0] : null;
   }
 
-  const trend = changeSeries(series, filters);
+  const trend = trendData(parks, filters, cube);
   const latest = trend[trend.length - 1];
+  const prior = trend[trend.length - 2];
   let changePct: number | null = null;
   let changeBasis: Kpis['changeBasis'] = null;
   if (total > 0 && latest) {
@@ -257,12 +309,11 @@ export function computeKpis(
       changeBasis = 'annuelle';
     } else if (
       filters.types.length === 0 &&
-      trend.length >= 2 &&
-      trend[trend.length - 2].crimes > 0
+      prior !== undefined &&
+      prior.crimes > 0
     ) {
       // Type-filtered series show — rather than a quarterly stand-in.
-      const prior = trend[trend.length - 2].crimes;
-      changePct = ((latest.crimes - prior) / prior) * 100;
+      changePct = ((latest.crimes - prior.crimes) / prior.crimes) * 100;
       changeBasis = 'trimestrielle';
     }
   }
@@ -280,9 +331,10 @@ export function computeKpis(
 export function topParks(
   parks: ParkRow[],
   filters: Filters,
+  cube: Cube,
   limit = 10,
 ): ParkRow[] {
-  return [...filterParks(parks, filters)]
+  return [...filterParks(parks, filters, cube)]
     .sort(
       (a, b) =>
         selectedCount(b, filters.types) - selectedCount(a, filters.types),
@@ -299,10 +351,11 @@ export interface BoroughRow {
 export function boroughTypeMatrix(
   parks: ParkRow[],
   filters: Filters,
+  cube: Cube,
 ): {types: string[]; rows: BoroughRow[]} {
-  const types = filters.types.length ? filters.types : CRIME_TYPES;
+  const types = filters.types.length ? filters.types : cube.crime_types;
   const byBorough = new Map<string, Record<string, number>>();
-  for (const park of filterParks(parks, filters)) {
+  for (const park of filterParks(parks, filters, cube)) {
     const counts = byBorough.get(park.borough) ?? {};
     for (const type of types) {
       counts[type] = (counts[type] ?? 0) + (park.counts[type] ?? 0);
@@ -337,5 +390,5 @@ export function plural(
 
 export function formatPct(value: number | null): string {
   if (value === null) return '—';
-  return `${value > 0 ? '+' : ''}${value.toFixed(1)} %`;
+  return `${value > 0 ? '+' : ''}${fmtFixed(value, 1)} %`;
 }

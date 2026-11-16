@@ -1,38 +1,75 @@
 {
-  "total_crimes": 12526,
+  "total_crimes": 12544,
   "peak_quarter": "2018Q3",
   "peak_quarter_crimes": 545,
-  "chi2_statistic": 1177.195831,
+  "chi2_statistic": 1182.052549,
   "chi2_dof": 30,
-  "chi2_p_value": 1.6697954640898965e-228,
-  "chi2_p_display": "p < 1e-200",
-  "chi2_min_expected": 0.746288,
+  "chi2_p_value": 1.5596602461712837e-229,
+  "chi2_p_display": "p < 1e-228",
+  "chi2_min_expected": 0.754305,
   "chi2_assumption": "expected counts below 5 in some cells; interpret V as descriptive",
-  "cramers_v": 0.137099,
+  "cramers_v": 0.137283,
   "latest_complete_year": 2025,
-  "latest_complete_year_crimes": 1083,
+  "latest_complete_year_crimes": 1101,
   "previous_year": 2024,
   "previous_year_crimes": 1042,
-  "yoy_change_pct": 3.934741,
+  "yoy_change_pct": 5.662188,
   "new_parks": [
     "CENTRAL PARK"
   ],
   "new_parks_latest_year_crimes": 52,
-  "latest_complete_year_excluding_new_parks_crimes": 1031,
-  "yoy_excluding_new_parks_pct": -1.055662,
+  "latest_complete_year_excluding_new_parks_crimes": 1049,
+  "yoy_excluding_new_parks_pct": 0.671785,
   "coverage_artifact": true,
-  "yoy_note": "CENTRAL PARK absent des workbooks source avant 2025Q1 ; hors ce parc, 2025 (1031) vs 2024 (1042) = -1.06 % — le chiffre inclusif (+3.93 %) est gonflé par cet artefact de couverture.",
+  "yoy_note": "CENTRAL PARK absent des workbooks source avant 2025Q1 ; hors ce parc, 2025 (1049) vs 2024 (1042) = +0.67 % — le chiffre inclusif (+5.66 %) est gonflé par cet artefact de couverture.",
   "parks_total": 1155,
   "parks_ever_hit": 792,
   "share_parks_ever_hit_pct": 68.57,
-  "rows_total": 371616,
-  "zero_rows": 364250,
-  "share_zero_rows_pct": 98.02,
+  "rows_total": 371623,
+  "park_quarters": 53089,
+  "zero_rows": 361942,
+  "share_zero_rows_pct": 97.39,
   "zero_share_mean_pct": 89.83,
   "quarters_total": 46,
   "first_quarter": "2014Q4",
   "last_quarter": "2026Q2",
   "missing_quarter": "2020Q1",
-  "rate_per_100_acres_formula": "sum(count) / sum(size_acres of distinct parks) * 100",
-  "source_anomaly": "q4-2025 FLUSHING MEADOWS CORONA PARK: TOTAL recorded 17 vs sum 18, row excluded from the warehouse (outputs/tables/source_anomalies.csv)"
+  "missing_quarters": [
+    "2020Q1"
+  ],
+  "crime_types": [
+    "BURGLARY",
+    "FELONY ASSAULT",
+    "GRAND LARCENY",
+    "GRAND LARCENY AUTO",
+    "MURDER",
+    "RAPE",
+    "ROBBERY"
+  ],
+  "missing_column_quarters": [
+    "2024Q2",
+    "2025Q1"
+  ],
+  "missing_column_types": [
+    "MURDER"
+  ],
+  "late_parks": [
+    {
+      "park": "CENTRAL PARK",
+      "first_quarter": "2025Q1"
+    }
+  ],
+  "source_anomalies": [
+    {
+      "park": "FLUSHING MEADOWS CORONA PARK",
+      "quarter": "2025Q4",
+      "total_recorded": 17,
+      "sum_computed": 18
+    }
+  ],
+  "null_count_rule": "count=NULL when the workbook lacks the crime column (2024Q2, 2025Q1: MURDER); NULLs are excluded from sums, rates and shares, never imputed, never treated as 0.",
+  "null_count_rows": 2309,
+  "rate_per_100_acres_formula": "sum(count of parks with acreage) / sum(latest size_acres of those parks) * 100; excluded crime volume reported",
+  "source_anomaly": "2025Q4 FLUSHING MEADOWS CORONA PARK: TOTAL recorded 17 vs sum of components 18; components are kept and the row is excluded from TOTAL-based checks only (outputs/tables/source_anomalies.csv, outputs/tables/source_anomaly_sensitivity.csv)",
+  "missing_column_anomaly": "2024Q2, 2025Q1 have no MURDER column: count is NULL with count_missing=1, never 0 (outputs/tables/source_anomalies.csv)"
 }

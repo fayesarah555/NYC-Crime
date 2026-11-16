@@ -460,11 +460,13 @@ def main():
         boroughs = st.multiselect(
             "Arrondissements",
             sorted(crimes["borough"].unique()),
+            placeholder="Tous",
             help="Aucune sélection = tous les arrondissements.",
         )
         crime_types = st.multiselect(
             "Types de délit",
             sorted(crimes["crime_type"].unique()),
+            placeholder="Tous",
             help="Aucune sélection = tous les types.",
         )
         quarter_range = st.select_slider(

@@ -21,7 +21,8 @@ import {Tab, TabList} from '@astryxdesign/core/TabList';
 import {TopNav} from '@astryxdesign/core/TopNav';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import FilterPanel from '../components/FilterPanel';
-import CrimeMap from '../components/CrimeMap';
+// Leaflet only ships when the map is rendered
+const CrimeMap = lazy(() => import('../components/CrimeMap'));
 import Legend from '../components/Legend';
 import ParkDetail from '../components/ParkDetail';
 import {
@@ -286,6 +287,7 @@ function DashboardContent() {
                           {plural(zeroCrime, 'exclu', 'exclus')} (aucun crime
                           dans la sélection).
                         </Text>
+                        <Suspense fallback={<Text type="body">Chargement de la carte…</Text>}>
                         <CrimeMap
                           parks={markers}
                           types={filters.types}
@@ -300,6 +302,7 @@ function DashboardContent() {
                           types={filters.types}
                           k={clusters.k}
                         />
+                        </Suspense>
                         <Text type="supporting" color="secondary">
                           Regroupement par grille de 0,05° sous le zoom{' '}
                           {GROUP_MAX_ZOOM} (les parcs proches partagent un

@@ -49,6 +49,21 @@ export default function MethodTab() {
 
   return (
     <VStack gap={4}>
+      <Card>
+        <VStack gap={2}>
+          <Heading level={3}>Architecture interactive</Heading>
+          <Text type="body" color="secondary">
+            Les étapes du pipeline, leurs entrées et les deux interfaces, en
+            diagramme navigable. Le fichier est servi avec le site.
+          </Text>
+          <iframe
+            src="/architecture.html"
+            title="Architecture du pipeline NYC park crime"
+            loading="lazy"
+            style={{width: '100%', height: '60vh', border: 'none'}}
+          />
+        </VStack>
+      </Card>
       <Section
         title="Sources"
         lines={[
@@ -73,21 +88,6 @@ export default function MethodTab() {
           'Les deux rapprochements flous audités sont écartés (data/geo_denylist.csv) ou corrigés par override (data/geo_overrides.csv).',
         ]}
       />
-      <Card>
-        <VStack gap={2}>
-          <Heading level={3}>Architecture interactive</Heading>
-          <Text type="body" color="secondary">
-            Les étapes du pipeline, leurs entrées et les deux interfaces, en
-            diagramme navigable. Le fichier est servi avec le site.
-          </Text>
-          <iframe
-            src="/architecture"
-            title="Architecture du pipeline NYC park crime"
-            loading="lazy"
-            style={{width: '100%', height: '60vh', border: 'none'}}
-          />
-        </VStack>
-      </Card>
       <Section
         title="Licence et attribution"
         lines={[

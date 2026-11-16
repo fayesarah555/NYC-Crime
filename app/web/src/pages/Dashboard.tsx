@@ -163,10 +163,17 @@ function DashboardContent() {
                 </Heading>
               }
               endContent={
-                <Text type="supporting" color="secondary">
-                  {meta.periods.first}–{meta.periods.last} · {meta.periods.count}{' '}
-                  trimestres · export JSON statique
-                </Text>
+                <HStack gap={4} vAlign="center">
+                  <Text type="supporting" color="secondary">
+                    {meta.periods.first}–{meta.periods.last} · {meta.periods.count}{' '}
+                    trimestres · export JSON statique
+                  </Text>
+                  <Text type="supporting">
+                    <a href="/architecture" target="_blank" rel="noreferrer">
+                      Architecture (nouvel onglet)
+                    </a>
+                  </Text>
+                </HStack>
               }
             />
 

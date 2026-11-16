@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "NYC park crime : pipeline et interfaces",
+    "output": ".archify/architecture-nyc-crime-20261116-142616/nyc-crime-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {"id": "nypd", "type": "external", "label": "Page NYPD", "sublabel": "classeurs trimestriels", "pos": [40, 70], "size": [150, 64]},
+    {"id": "socrata", "type": "external", "label": "NYC Open Data", "sublabel": "parcs, coordonnées", "pos": [40, 220], "size": [150, 64]},
+    {"id": "download", "type": "backend", "label": "download.py", "sublabel": "retries + sha256", "pos": [260, 70], "size": [150, 64]},
+    {"id": "raw", "type": "database", "label": "data/raw", "sublabel": "46 classeurs + lock", "pos": [470, 70], "size": [150, 64]},
+    {"id": "geo", "type": "backend", "label": "geo.py", "sublabel": "jointure parcs", "pos": [260, 220], "size": [150, 64]},
+    {"id": "parse", "type": "backend", "label": "parse.py", "sublabel": "TOTAL, NA, anomalies", "pos": [470, 180], "size": [150, 64]},
+    {"id": "warehouse", "type": "database", "label": "warehouse.db", "sublabel": "SQLite PK/FK + lineage", "pos": [680, 150], "size": [160, 64]},
+    {"id": "analysis", "type": "backend", "label": "eda.py · model.py", "sublabel": "stats, SARIMAX, KMeans", "pos": [680, 300], "size": [160, 64]},
+    {"id": "outputs", "type": "database", "label": "outputs/", "sublabel": "CSV · PNG · metrics JSON", "pos": [900, 230], "size": [150, 64]},
+    {"id": "exporter", "type": "backend", "label": "export_web.py", "sublabel": "JSON validés, < 2 Mo", "pos": [900, 90], "size": [150, 64]},
+    {"id": "web", "type": "frontend", "label": "Dashboard Astryx", "sublabel": "Vite · statique · Vercel", "pos": [1120, 90], "size": [160, 64], "tag": "interface principale"},
+    {"id": "streamlit", "type": "frontend", "label": "Vue Streamlit", "sublabel": "analyste, locale", "pos": [1120, 250], "size": [160, 64]},
+    {"id": "ci", "type": "cloud", "label": "CI GitHub Actions", "sublabel": "pytest · vitest · Playwright", "pos": [470, 360], "size": [180, 64]}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "Pipeline local (Python, reproductible)", "wraps": ["download", "raw", "geo", "parse", "warehouse", "analysis", "outputs", "exporter"]},
+    {"kind": "security-group", "label": "Déploiement statique", "wraps": ["web"]}
+  ],
+  "connections": [
+    {"id": "nypd-to-download", "from": "nypd", "to": "download", "label": "HTTPS", "variant": "emphasis"},
+    {"id": "download-to-raw", "from": "download", "to": "raw", "label": "manifeste"},
+    {"id": "raw-to-parse", "from": "raw", "to": "parse"},
+    {"id": "socrata-to-geo", "from": "socrata", "to": "geo", "label": "API"},
+    {"id": "geo-to-warehouse", "from": "geo", "to": "warehouse"},
+    {"id": "parse-to-warehouse", "from": "parse", "to": "warehouse"},
+    {"id": "warehouse-to-analysis", "from": "warehouse", "to": "analysis", "label": "SQL"},
+    {"id": "analysis-to-outputs", "from": "analysis", "to": "outputs"},
+    {"id": "outputs-to-exporter", "from": "outputs", "to": "exporter", "label": "artefacts"},
+    {"id": "exporter-to-web", "from": "exporter", "to": "web", "label": "JSON"},
+    {"id": "outputs-to-streamlit", "from": "outputs", "to": "streamlit", "label": "CSV · JSON", "variant": "dashed"},
+    {"id": "ci-to-pipeline", "from": "ci", "to": "analysis", "label": "tests", "variant": "dashed"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Entrées", "items": ["La page NYPD publie un classeur par trimestre", "NYC Open Data fournit la géométrie et les acres", "Empreintes figées dans data/manifest.lock.json"]},
+    {"dot": "emerald", "title": "Traitement", "items": ["parse.py refuse un TOTAL incohérent et marque les colonnes absentes NULL", "eda.py et model.py écrivent tables, figures et métriques", "export_web.py valide huit payloads JSON avant publication"]},
+    {"dot": "rose", "title": "Interfaces", "items": ["Dashboard Astryx statique, une seule copie des données", "Streamlit lit les mêmes artefacts", "Aucun recalcul de modèle dans le navigateur"]}
+  ]
+}

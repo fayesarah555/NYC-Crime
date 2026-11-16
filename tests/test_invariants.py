@@ -78,7 +78,8 @@ def test_selection_totals_agree(payloads, boroughs, types, lo, hi):
                 selected += sum(v or 0 for v in counts) if not types else sum(
                     counts[cube["crime_types"].index(t)] or 0 for t in types
                 )
-    assert selected <= window or types
+    # Borough selection is a subset of the full window, with or without types.
+    assert selected <= window
     assert selected >= 0
 
 

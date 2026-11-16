@@ -23,6 +23,7 @@ Run from the repository root:  python analysis/model.py
 
 import json
 import sqlite3
+import textwrap
 import warnings
 from pathlib import Path
 
@@ -1304,7 +1305,10 @@ def run_clustering(crimes, parks):
 # --------------------------------------------------------------------------
 
 def _footnote(fig, text):
-    fig.text(0.01, 0.01, text, fontsize=7, style="italic", color="#555555")
+    # Wrap instead of letting a long caveat run past the right edge.
+    wrapped = textwrap.fill(text, width=150)
+    fig.text(0.01, 0.005, wrapped, fontsize=6.5, style="italic",
+             color="#555555", va="bottom")
 
 
 def fig_forecast(series, result, path, footnote):
@@ -1335,18 +1339,16 @@ def fig_forecast(series, result, path, footnote):
     ax.set_xticklabels([labels[i] for i in range(0, len(labels), 4)],
                        rotation=45, ha="right", fontsize=8)
     ax.grid(alpha=0.25)
-    _footnote(fig, footnote)
     recursive = f"{result['backtest_metrics']['seasonal_naive']['mae']:.2f}"
     rule = f"{result['baseline_mae_seasonal_rule']:.2f}"
-    fig.text(
-        0.01, 0.032,
+    comparator = (
         "Comparateur honnête multi-pas : naïve saisonnière récursive "
         f"(MAE moyenne {recursive.replace('.', ',')}) ; la règle saisonnière à "
         f"un pas, valeurs réelles de l'année précédente (MAE {rule.replace('.', ',')}), "
-        "sert de référence.",
-        fontsize=7, style="italic", color="#555555",
+        "sert de référence."
     )
-    fig.tight_layout(rect=(0, 0.055, 1, 1))
+    _footnote(fig, f"{footnote}\n{comparator}")
+    fig.tight_layout(rect=(0, 0.085, 1, 1))
     fig.savefig(path, dpi=DPI)
     plt.close(fig)
 

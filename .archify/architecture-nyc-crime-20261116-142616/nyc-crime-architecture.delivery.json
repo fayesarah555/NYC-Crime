@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "7998eace-bc52-4c2a-afb8-f5fc44a73c7e",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\Y.CHEHBOUB\\PERSONAL__DO_NOT_TOUCH\\.claude\\worktrees\\nyc-crime\\.archify\\architecture-nyc-crime-20261116-142616\\candidate.json",
+  "output": "C:\\Users\\Y.CHEHBOUB\\PERSONAL__DO_NOT_TOUCH\\.claude\\worktrees\\nyc-crime\\.archify\\architecture-nyc-crime-20261116-142616\\nyc-crime-architecture.html",
+  "specification": {
+    "sha256": "f96efb7ea8369cf9bf376e355d82c18c4dab2352ee996dd6cb5c103e96851ec2",
+    "bytes": 4190
+  },
+  "artifact": {
+    "sha256": "440994d97bc864378a716b3be24e8458ea9dd996a0cbbdc2c2e0ee620a271e51",
+    "bytes": 770198
+  }
+}

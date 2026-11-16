@@ -33,5 +33,5 @@ données analysé.
   figures en français, code et commentaires en anglais.
 - Web : Astryx pour les composants, tokens pour les couleurs d'interface, la
   palette de données vient de `palette_data.py` / `palette.json`.
-- Prose : le README, le deck et les interfaces suivent la passe humanizer —
+- Prose : le README, le deck et les interfaces suivent la passe humanizer :
   pas de formules creuses ni de chiffres non sourcés.

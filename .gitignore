@@ -21,3 +21,8 @@ app/web/e2e/screenshots/
 app/web/test-results/
 app/web/coverage/
 app/web/playwright-report/
+
+# archify rendered output (candidate JSON stays tracked)
+.archify/*/*.html
+.archify/*/review-*/
+presentation/render/

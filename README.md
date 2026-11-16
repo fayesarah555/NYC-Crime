@@ -351,8 +351,8 @@ Les données ne sont pas couvertes par cette licence. Elles restent la propriét
 de leurs producteurs et sont diffusées par la ville de New York selon les
 [conditions d'utilisation de NYC Open Data](https://opendata.cityofnewyork.us/overview/#terms) :
 
-- [NYPD, Park Crime Statistics](https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page) — © City of New York / NYPD ;
-- [NYC Parks Properties](https://data.cityofnewyork.us/Recreation/Parks-Properties/enfh-gkve) — © City of New York / NYC Parks.
+- [NYPD, Park Crime Statistics](https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page) : © City of New York / NYPD ;
+- [NYC Parks Properties](https://data.cityofnewyork.us/Recreation/Parks-Properties/enfh-gkve) : © City of New York / NYC Parks.
 
 Le dépôt ne fait que lire ces sources ; aucun contenu n'est modifié dans son
 fond.

@@ -1,0 +1,5 @@
+data/
+.venv/
+app/web/node_modules/
+app/web/dist/
+*.pdf

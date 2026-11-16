@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from pathlib import Path
 
 from pptx import Presentation
@@ -35,21 +36,9 @@ MUTED = RGBColor(0x5C, 0x64, 0x72)
 LIGHT = RGBColor(0xF1, 0xF3, 0xF6)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 
-EDA = json.loads((METRICS_DIR / "eda_stats.json").read_text(encoding="utf-8"))
-MODEL = json.loads((METRICS_DIR / "model_metrics.json").read_text(encoding="utf-8"))
-CITY = MODEL["citywide"]
-CLUSTERS = MODEL["clustering"]
-
-
 def read_rows(name):
     with (TABLES_DIR / name).open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
-
-
-GEO = {row["metric"]: row["value"] for row in read_rows("geo_coverage.csv")}
-RATES = {row["borough"]: float(row["rate_per_100_acres"]) for row in read_rows("rate_by_borough.csv")}
-TOP_PARKS = read_rows("top_parks.csv")
-PROFILES = read_rows("cluster_profiles.csv")
 
 
 def seasonal_means():
@@ -65,11 +54,30 @@ def seasonal_means():
     return {quarter: sum(values) / len(values) for quarter, values in per_quarter.items()}
 
 
-SEASON = seasonal_means()
-BOROUGH_FORECAST = {}
-for row in read_rows("forecast_boroughs.csv"):
-    BOROUGH_FORECAST.setdefault(row["quarter_label"], {})[row["borough"]] = float(row["point"])
-BOROUGH_FIRST_Q = next(iter(BOROUGH_FORECAST))
+try:
+    EDA = json.loads((METRICS_DIR / "eda_stats.json").read_text(encoding="utf-8"))
+    MODEL = json.loads((METRICS_DIR / "model_metrics.json").read_text(encoding="utf-8"))
+    CITY = MODEL["citywide"]
+    CLUSTERS = MODEL["clustering"]
+    GEO = {row["metric"]: row["value"] for row in read_rows("geo_coverage.csv")}
+    RATES = {row["borough"]: float(row["rate_per_100_acres"]) for row in read_rows("rate_by_borough.csv")}
+    TOP_PARKS = read_rows("top_parks.csv")
+    PROFILES = read_rows("cluster_profiles.csv")
+    SEASON = seasonal_means()
+    BOROUGH_FORECAST = {}
+    for row in read_rows("forecast_boroughs.csv"):
+        BOROUGH_FORECAST.setdefault(row["quarter_label"], {})[row["borough"]] = float(row["point"])
+    BOROUGH_FIRST_Q = next(iter(BOROUGH_FORECAST))
+except FileNotFoundError as exc:
+    print(
+        f"Artefact manquant : {exc.filename}\n"
+        "Construisez d'abord les données puis le deck :\n"
+        "  make data\n"
+        "  make warehouse\n"
+        "  make deck",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
 
 
 def fr(value, digits=0):
@@ -204,7 +212,7 @@ def title_slide(prs, index):
     bar.line.fill.background()
     bar.shadow.inherit = False
 
-    add_text(slide, 0.9, 1.9, 11.5, 0.4, "MODULE OPEN DATA — IPSSI · SUJET 2", 13, ACCENT, bold=True)
+    add_text(slide, 0.9, 1.9, 11.5, 0.4, "MODULE OPEN DATA · IPSSI · SUJET 2", 13, ACCENT, bold=True)
     add_text(slide, 0.9, 2.45, 11.5, 1.6, "Criminalité dans les parcs\nde New York", 44, INK, bold=True)
     add_text(
         slide,
@@ -280,7 +288,7 @@ def data_slide(prs, index):
         6.3,
         4.9,
         [
-            ("NYPD — Park Crime Statistics. ", "Un classeur Excel par trimestre, publié sur nyc.gov ; sept types de crimes majeurs par parc."),
+            ("NYPD, Park Crime Statistics. ", "Un classeur Excel par trimestre, publié sur nyc.gov ; sept types de crimes majeurs par parc."),
             (f"{fr(len(list((ROOT / 'data' / 'raw').glob('*.xlsx'))))} classeurs. ", f"{EDA['first_quarter']} → {EDA['last_quarter']} ; 2020Q1 absent en amont ; 2026Q3 et 2026Q4 pas encore publiés (404)."),
             ("NYC Parks Properties. ", "Référentiel des parcs : surface en acres et coordonnées, pour le taux par acre et la carte."),
             ("Attribution. ", "NYPD / NYC Open Data ; données publiques, réutilisées sans modification de fond."),
@@ -495,7 +503,7 @@ def final_slide(prs, index):
     bar.shadow.inherit = False
     add_text(slide, 0.9, 2.5, 11.5, 1.0, "Questions", 44, INK, bold=True)
     add_text(slide, 0.9, 3.7, 11.5, 0.5, "Merci de votre attention.", 20, MUTED)
-    add_text(slide, 0.9, 4.7, 11.5, 1.2, "make setup · make all · make web-build · make app\nDépôt : NYC-Crime — README.md pour la reproduction complète", 14, MUTED, font="Consolas")
+    add_text(slide, 0.9, 4.7, 11.5, 1.2, "make setup · make all · make web-build · make app\nDépôt : NYC-Crime, README.md pour la reproduction complète", 14, MUTED, font="Consolas")
     add_text(
         slide,
         0.9,
@@ -531,7 +539,7 @@ def app_slide(prs, index):
         6.84,
         4.3,
         0.2,
-        "Capture réelle — interface web (Chrome, 1440 × 1600).",
+        "Capture réelle : interface web (Chrome, 1440 × 1600).",
         8,
         MUTED,
         italic=True,
@@ -557,7 +565,7 @@ def app_slide(prs, index):
     rule.fill.fore_color.rgb = ACCENT
     rule.line.fill.background()
     rule.shadow.inherit = False
-    add_text(slide, 5.35, 4.3, 6.8, 0.25, "Vue analyste — Streamlit (capture réelle)", 9, ACCENT, bold=True)
+    add_text(slide, 5.35, 4.3, 6.8, 0.25, "Vue analyste : Streamlit (capture réelle)", 9, ACCENT, bold=True)
     place_picture(slide, APP_CAPTURE, 5.35, 4.62, 2.4, 2.12)
     add_text(
         slide,
@@ -630,7 +638,7 @@ def build():
                 "Saisonnalité",
                 "L'été pèse quatre fois plus que l'hiver",
                 FIG_DIR / "fig02_seasonality.png",
-                f"T3 : {fr(SEASON['3'])} crimes par trimestre contre {fr(SEASON['1'])} en T1 — un facteur 4 qui justifie un modèle saisonnier.",
+                f"T3 : {fr(SEASON['3'])} crimes par trimestre contre {fr(SEASON['1'])} en T1, un facteur 4 qui justifie un modèle saisonnier.",
                 "Le troisième trimestre concentre "
                 f"{fr(SEASON['3'])} crimes en moyenne contre {fr(SEASON['1'])} au "
                 "premier. Ce facteur quatre est stable sur toute la période ; il impose "
@@ -765,7 +773,7 @@ def build():
     for index, (_, builder) in enumerate(slides, start=1):
         builder(prs, index)
 
-    prs.core_properties.title = "Criminalité dans les parcs de New York — IPSSI Open Data, sujet 2"
+    prs.core_properties.title = "Criminalité dans les parcs de New York, IPSSI Open Data, sujet 2"
     prs.core_properties.author = "Étudiant IPSSI"
     prs.core_properties.subject = "NYPD Park Crime Statistics"
     OUT_DIR.mkdir(parents=True, exist_ok=True)

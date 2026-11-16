@@ -43,7 +43,7 @@ export default function ForecastTab() {
         {String(metrics.selection_caveat_fr)}
       </Text>
       <Text type="body">
-        Baseline naïve saisonnière : MAE {String(metrics.baseline_mae)} —
+        Baseline naïve saisonnière : MAE {String(metrics.baseline_mae)}, soit une
         amélioration de {String(metrics.improvement_pct)} % sur{' '}
         {String(metrics.backtest_quarters)} trimestres de backtest.
       </Text>

@@ -7,3 +7,13 @@ __pycache__/
 .pytest_cache/
 app/web/node_modules/
 app/web/dist/
+.claude-flow/
+.remember/
+.impeccable/
+.vercel/
+*.log
+
+# local secrets
+.env
+.env.local
+.env*.local

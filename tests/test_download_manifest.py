@@ -10,6 +10,11 @@ pytestmark = pytest.mark.network_free
 
 RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 MANIFEST = RAW_DIR / "manifest.json"
+if not RAW_DIR.exists():
+    pytest.skip(
+        "data/raw absent; run `make data` then `make warehouse` first",
+        allow_module_level=True,
+    )
 
 
 def load_manifest():

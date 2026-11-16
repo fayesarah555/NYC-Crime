@@ -3,8 +3,11 @@
 data/raw/
 data/processed/
 data/warehouse.db
+data/warehouse.db.tmp*
 __pycache__/
 .pytest_cache/
+*.egg-info/
+.coverage
 app/web/node_modules/
 app/web/dist/
 .claude-flow/
@@ -13,7 +16,8 @@ app/web/dist/
 .vercel/
 *.log
 
-# local secrets
-.env
-.env.local
-.env*.local
+# generated web artefacts
+app/web/e2e/screenshots/
+app/web/test-results/
+app/web/coverage/
+app/web/playwright-report/

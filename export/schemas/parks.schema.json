@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "parks.schema.json",
+  "title": "parks.json",
+  "$comment": "Numbers are finite: the exporter validates with a finite type checker (NaN/Infinity are not JSON).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "park_id", "park", "borough", "lat", "lon", "acres", "total",
+      "dominant_type", "cluster", "crimes_per_100_acres", "risk_rank",
+      "coverage_era", "counts"
+    ],
+    "properties": {
+      "park_id": {"type": "string", "minLength": 1},
+      "park": {"type": "string"},
+      "borough": {"type": "string"},
+      "lat": {"type": ["number", "null"]},
+      "lon": {"type": ["number", "null"]},
+      "acres": {"type": ["number", "null"]},
+      "total": {"type": "integer", "minimum": 0},
+      "dominant_type": {"type": "string"},
+      "cluster": {"type": ["integer", "null"]},
+      "crimes_per_100_acres": {"type": ["number", "null"], "minimum": 0},
+      "risk_rank": {"type": ["integer", "null"], "minimum": 1},
+      "coverage_era": {"type": "string"},
+      "counts": {
+        "type": "object",
+        "additionalProperties": {"type": ["integer", "null"]}
+      }
+    },
+    "additionalProperties": false
+  }
+}

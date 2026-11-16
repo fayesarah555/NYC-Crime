@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "forecast.schema.json",
+  "title": "forecast.json",
+  "$comment": "Numbers are finite: the exporter validates with a finite type checker (NaN/Infinity are not JSON).",
+  "type": "object",
+  "required": ["city", "boroughs", "metrics", "caveats"],
+  "properties": {
+    "city": {"$ref": "#/$defs/points"},
+    "boroughs": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/points"}
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["city", "boroughs", "skipped_boroughs"],
+      "additionalProperties": true
+    },
+    "caveats": {"type": "array", "items": {"type": "string"}},
+    "caveat": {"type": "string"},
+    "caveat_fr": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "point": {
+      "type": "object",
+      "required": ["quarter", "point", "lower", "upper", "clipped"],
+      "properties": {
+        "quarter": {"type": "string"},
+        "point": {"type": "number"},
+        "lower": {"type": "number", "minimum": 0},
+        "upper": {"type": "number", "minimum": 0},
+        "clipped": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "points": {"type": "array", "items": {"$ref": "#/$defs/point"}}
+  }
+}

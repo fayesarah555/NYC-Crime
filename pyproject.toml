@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyc-park-crime"
+version = "0.1.0"
+description = "NYC park crime: ETL, EDA, forecasting and static web artefacts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "jsonschema",
+    "matplotlib",
+    "numpy",
+    "openpyxl",
+    "pandas",
+    "plotly",
+    "pydeck",
+    "python-pptx",
+    "requests",
+    "scikit-learn",
+    "scipy",
+    "shapely",
+    "statsmodels",
+    "streamlit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "hypothesis",
+    "ruff",
+]
+
+[tool.setuptools]
+packages = ["etl", "analysis", "export"]
+py-modules = ["palette_data"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["etl", "analysis", "export"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers"]
+markers = [
+    "network_free: test does not touch the network",
+    "live: reads the real data/ artefacts; deselected in CI (`-m 'not live'`)",
+]
+filterwarnings = [
+    "error",
+    # sqlite3 connections in test helpers are garbage-collected, not closed.
+    "ignore::ResourceWarning",
+]
+
+[tool.coverage.run]
+source = ["etl", "analysis", "export"]
+
+[tool.coverage.report]
+# Honest floor: statement coverage of the unit suite (`-m "not live"`) on the
+# committed fixture world, measured 2026-11-16 at 89.34% (Python 3.14); the
+# 87 gate keeps roughly two points of headroom below that measurement.
+# Waiver: etl/geo.py (69%) stays below the 85% per-module target because its
+# network and warehouse paths run in `make all`, not in the unit suite; the
+# matching logic itself is covered. Every module the analysis pipeline uses
+# clears 85%: eda 96%, model 98%, parse 89%, export 89%. See rd.md evidence.
+fail_under = 87

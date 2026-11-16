@@ -1,2 +1,4 @@
 workbook,sheet,excel_row,park,borough,total_recorded,sum_computed,delta,kind
-nyc-park-crime-stats-q4-2025.xlsx,Page1,315,FLUSHING MEADOWS CORONA PARK,QUEENS,17,18,-1,total_mismatch
+nyc-park-crime-stats-q2-2024.xlsx,Page1_1,,,,,,,missing_column
+nyc-park-crime-stats-q1-2025.xlsx,Page1,,,,,,,missing_column
+nyc-park-crime-stats-q4-2025.xlsx,Page1,315.0,FLUSHING MEADOWS CORONA PARK,QUEENS,17.0,18.0,-1.0,total_mismatch

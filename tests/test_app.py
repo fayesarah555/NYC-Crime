@@ -197,3 +197,18 @@ def test_short_labels_cover_every_crime_type():
         "ROBBERY",
     }
     assert SHORT_TYPE_LABELS["GRAND LARCENY"] == "Larcin"
+
+
+def test_missing_metrics_shows_make_all_error():
+    from streamlit.testing.v1 import AppTest
+
+    def script():
+        import app as appmod
+
+        appmod.METRICS_FILE = appmod.ROOT / "outputs" / "metrics" / "absent.json"
+        appmod.render_forecast()
+
+    at = AppTest.from_function(script).run(timeout=60)
+    assert not at.exception
+    assert at.error, "missing artefact must surface st.error"
+    assert "make all" in at.error[0].value

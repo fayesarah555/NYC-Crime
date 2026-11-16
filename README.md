@@ -1,5 +1,7 @@
 # Criminalité dans les parcs de New York
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Module Open Data, IPSSI · Sujet 2 · Novembre 2026**
 
 **Démo en ligne : [nyc-crimes.vercel.app](https://nyc-crimes.vercel.app)**
@@ -59,8 +61,15 @@ make warehouse  # parse -> data/processed/park_crime_long.csv + data/warehouse.d
 ```
 
 Seul le sous-ensemble consommé par le tableau de bord est versionné :
-`app/web/public/data/*.json` (six fichiers, < 2 Mo). C'est la charge utile du
-déploiement : le build web n'a besoin d'aucune donnée Python.
+`app/web/src/data/*.json` (huit fichiers, < 2 Mo, cubes parc × trimestre × type
+et palette inclus). C'est la charge utile du déploiement : le build web n'a
+besoin d'aucune donnée Python et le bundle n'embarque qu'une seule copie.
+
+Les agrégats par parc ne sont pas publiés dans Socrata : la découverte se fait
+sur la page NYPD (liens stables), avec un manifeste et une vérification
+d'empreintes (`data/manifest.lock.json`). L'API Socrata ne sert qu'au référentiel
+des parcs. Une page modifiée ou un classeur manquant produit un manifeste
+incomplet et un code de sortie non nul au lieu d'un succès silencieux.
 
 ## Architecture
 
@@ -81,7 +90,7 @@ data/raw/*.xlsx (NYPD)          NYC Parks Properties (JSON)
 └───────────────────┬────────────────────────────┘
                     ▼
 ┌────────────────────────────────────────────────┐
-│ Modèles          analysis/model.py              │ prévisions SARIMAX, backtest, clusters KMeans
+│ Modèles          analysis/model.py              │ prévisions, backtest rolling, clusters KMeans
 └───────────────────┬────────────────────────────┘
                     ▼
 ┌────────────────────────────────────────────────┐
@@ -104,7 +113,7 @@ développée et testée avec Node 26.12.1) ; la chaîne Python, `make all` et
 `make test` fonctionnent sans Node.
 
 ```bash
-make setup      # crée .venv et installe requirements.txt
+make setup      # crée .venv et installe le projet + extras dev (pyproject.toml)
 ```
 
 ## Commandes de reproduction
@@ -119,8 +128,8 @@ make test       # suite pytest
 make deck       # régénère presentation/nyc_crime_deck.pptx
 make app        # lance l'application Streamlit sur http://localhost:8501
 make all        # data -> warehouse -> geo -> eda -> model -> test -> deck (sans Node)
-make web-install  # installe les dépendances de app/web/ (npm install)
-make web-export   # exporte les artefacts Python en JSON statique -> app/web/public/data/
+make web-install  # installe les dépendances de app/web/ (npm ci)
+make web-export   # exporte les artefacts Python en JSON statique -> app/web/src/data/
 make web-build    # web-export puis npm run build -> app/web/dist/
 make web-dev      # serveur de développement Vite (rechargement à chaud)
 make all-web      # make all + make web-build
@@ -162,21 +171,24 @@ Onglets :
 - **Exploration** : filtres par arrondissement, type de délit, période et
   recherche de parc. Les quatre indicateurs (crimes de la sélection, parcs
   touchés, délit dominant, évolution) sont recalculés à chaque filtre ; sur
-  l'ensemble des sélections, 12 526 crimes au total. Puis carte des parcs
+  l'ensemble des sélections, 12 544 crimes au total. Puis carte des parcs
   (option coloration par cluster), tendance citywide ou par arrondissement, top
-  parcs et matrice arrondissement × type.
-- **Prévisions** : backtest SARIMAX contre la règle naïve, prévisions citywide
+  parcs, classement des parcs par risque (crimes / 100 acres) et matrice
+  arrondissement × type.
+- **Prévisions** : backtest rolling contre la règle naïve (MAE moyenne ±
+  écart-type, test de Diebold-Mariano), prévisions citywide réconciliées
   2026Q3 → 2027Q2 avec intervalle à 95 %, et limites du modèle.
 - **Méthode** : sources, périodes et anomalies de couverture, licence et
   attribution.
 
-![Tableau de bord web](docs/screenshots/web_dashboard.png)
+![Tableau de bord web](docs/screenshots/web_dashboard.jpg)
 
 ## Déploiement Vercel
 
 `vercel.json` décrit un site **statique** : `npm --prefix app/web run build`
 puis publication de `app/web/dist/`. Aucun Python ne tourne au build : les JSON
-déjà versionnés dans `app/web/public/data/` suffisent.
+déjà versionnés dans `app/web/src/data/` suffisent (importés par Vite, donc
+présents une seule fois dans `dist`).
 
 Depuis le tableau de bord Vercel :
 
@@ -209,18 +221,20 @@ Tous les chiffres ci-dessous sont produits par le pipeline et stockés dans
 
 | Indicateur | Valeur | Artefact |
 | --- | --- | --- |
-| Crimes majeurs déclarés (2014Q4–2026Q2) | 12 526 | `eda_stats.json` |
+| Crimes majeurs déclarés (2014Q4–2026Q2) | 12 544 | `eda_stats.json` |
 | Pic trimestriel | 2018Q3, 545 crimes | `eda_stats.json` |
-| Évolution 2025 vs 2024, avec Central Park | +3,93 % (1 083 vs 1 042) | `eda_stats.json` |
-| Évolution 2025 vs 2024, hors Central Park | −1,06 % (1 031 vs 1 042) | `eda_stats.json` |
-| Liaison arrondissement × type | χ² = 1177,2 ; ddl = 30 ; p < 1e-200 ; V = 0,137 | `eda_stats.json` |
+| Évolution 2025 vs 2024, avec Central Park | +5,66 % (1 101 vs 1 042) | `eda_stats.json` |
+| Évolution 2025 vs 2024, hors Central Park | +0,67 % (1 049 vs 1 042) | `eda_stats.json` |
+| Liaison arrondissement × type | χ² = 1182,1 ; ddl = 30 ; p < 1e-200 ; V = 0,137 | `eda_stats.json` |
 | Parcs sans crime, moyenne par trimestre | 89,83 % | `eda_stats.json` |
 | Parcs touchés au moins une fois | 792 sur 1 155 | `eda_stats.json` |
 | Parcs géolocalisés | 1 009 sur 1 155 (87,4 % ; 90,5 % pondéré) | `geo_coverage.csv` |
-| Taux par acre | Manhattan 146,7 / 100 acres ; Staten Island 2,1 | `rate_by_borough.csv` |
-| Backtest SARIMAX vs naïf récursif | MAE 19,98 vs 22,75 ; MAPE 9,62 % | `model_metrics.json` |
-| Prévision citywide | 2026Q3 → 2027Q2 | `forecast_city.csv` |
-| Typologie des parcs | k = 4 ; silhouette 0,225 ; 337 parcs | `model_metrics.json` |
+| Taux par acre | Manhattan 205,4 / 100 acres hors Central Park (146,7 avec) ; Staten Island 2,1 | `rate_by_borough.csv` |
+| Backtest rolling (3 origines) | naïve saisonnière retenue : MAE 30,17 ± 7,68 ; SARIMAX 30,88 ; Diebold-Mariano p = 0,90 ; MAPE 12,94 % | `model_metrics.json` |
+| Couverture empirique des intervalles 95 % | 100 % (naïve), 91,7 % (Holt-Winters), 66,7 % (GLM de Poisson) | `model_metrics.json` |
+| Prévision citywide réconciliée | 2026Q3 → 2027Q2 ; écart moyen +2,92 vs prévision brute | `forecast_city.csv` |
+| Typologie des parcs | k = 2 ; silhouette 0,180 ; ARI 0,55 ± 0,34 ; 103 parcs (≥ 20 crimes) | `model_metrics.json` |
+| Risque par acre | classement dans `park_risk.csv` (Washington Square Park : 6 678 crimes / 100 acres) | `park_risk.csv` |
 
 Le χ² arrondissement × type reste un résultat descriptif, pas prédictif :
 l'association est significative (p < 1e-200) mais le V de Cramér est faible
@@ -230,35 +244,83 @@ Valeurs exactes telles qu'écrites dans les artefacts (utile pour vérifier une
 citation) :
 
 ```text
-total_crimes=12526  chi2_statistic=1177.195831  cramers_v=0.137099
-selected_mae=19.9818  baseline_mae=22.75  selected_mape=9.62
-silhouette=0.225  selected_k=4  parks_ever_hit=792
+total_crimes=12544  chi2_statistic=1182.052549  cramers_v=0.137283
+selected_model=seasonal_naive  selected_mae=30.1667  selected_mae_sd=7.6848
+challenger=sarimax  challenger_mae=30.8782  dm_p=0.9017  selected_mape=12.94
+silhouette=0.1795  selected_k=2  ari_mean=0.5455  parks_at_floor=103
+reconciled_delta_mean=2.92  parks_ever_hit=792
 ```
 
-La marche de 2025Q1 est un artefact de couverture, pas une hausse réelle : à
-périmètre constant, 2025 recule de 1,06 %. La prévision citywide est gonflée par
-le même ajout de Central Park (`coverage_gaps.csv`).
+La marche de 2025Q1 reste en grande partie un artefact de couverture : à
+périmètre constant, 2025 ne progresse que de 0,67 %, contre 5,66 % avec
+Central Park. La prévision citywide est gonflée par le même ajout
+(`coverage_gaps.csv`). Le taux par acre honnête est le taux à périmètre
+constant (Central Park exclu) : sa série ne couvre que 2025Q1–2026Q2 alors que
+ses acres comptent en entier.
 
 ## Limites
 
 - **Pas de fréquentation** : le taux par acre mesure l'exposition du parc, pas
   le risque par visiteur.
 - **Couverture incomplète** : Central Park depuis 2025Q1 uniquement, 2020Q1
-  absent, 2026Q3–Q4 non publiés.
+  absent, 2026Q3–Q4 non publiés (`coverage_gaps.csv`).
+- **Colonne absente** : q1-2025 et q2-2024 n'ont pas de colonne MURDER ; ces
+  cellules sont NULL (`count_missing=1`), exclues des sommes, jamais des zéros.
+- **TOTAL incohérent** : Flushing Meadows 2025Q4 (TOTAL 17 vs somme 18) garde
+  ses sept composantes, flaggées `total_mismatch` (`source_anomalies.csv`).
 - **Déclarations, pas faits établis** : ce sont des plaintes enregistrées ; la
   propension à déclarer varie avec le quartier.
 - **Choix de modèle optimiste** : le modèle est sélectionné sur la même fenêtre
   de backtest qu'il rapporte ; seul le comparatif avec la règle naïve est neutre.
-- **Géolocalisation** : 12,6 % des parcs sans coordonnées ; deux rapprochements
-  flous sont des faux positifs assumés (`geo_false_positives.csv`).
+- **Géolocalisation** : 12,6 % des parcs sans coordonnées ; les deux
+  rapprochements flous audités sont écartés (`data/geo_denylist.csv`) ou
+  corrigés par override (`data/geo_overrides.csv`, `geo_false_positives.csv`).
 - **Périmètre du modèle** : STATEN ISLAND et BROOKLYN/QUEENS sont exclus de la
-  prévision par arrondissement, faute de volume.
+  prévision par arrondissement, faute de volume. BROOKLYN/QUEENS est un libellé
+  combiné de la source : 5 parcs dans la source, 4 avec au moins un crime.
+
+## Vérifier les chiffres
+
+```bash
+make check        # ruff, mypy, tests, couverture, README
+make readme-check # les chiffres cités ici face aux artefacts
+```
+
+Le README, le deck et le tableau de bord lisent les mêmes fichiers
+`outputs/metrics/*.json` ; `scripts/check_readme_numbers.py` échoue dès qu'un
+chiffre cité ne correspond plus à l'artefact.
+
+## Confidentialité et tuiles
+
+La carte charge les tuiles OpenStreetMap depuis `tile.openstreetmap.org` : votre
+adresse IP et la zone consultée sont visibles du fournisseur de tuiles. Aucune
+autre requête réseau n'est faite : le reste de l'application est statique et
+les données sont embarquées au build.
+
+## Fichiers volumineux
+
+Le classeur PowerPoint est régénéré par `make deck`, les figures par
+`make eda`/`make model`, et les captures par `make e2e` (dossier ignoré). La
+capture du tableau de bord est un JPEG compressé (~400 Ko) ; les classeurs NYPD
+et l'entrepôt ne sont jamais versionnés.
+
+## English summary
+
+NYC park crime, IPSSI Open Data module, subject 2. Quarterly NYPD park-crime
+workbooks (2014Q4–2026Q2, 46 quarters, 12 544 major crimes) are downloaded and
+reconciled in a SQLite warehouse; the analysis covers seasonality, borough ×
+crime-type association (χ², Cramér's V), per-acre risk, a rolling-origin
+forecast with a coverage-break dummy and Diebold–Mariano test, and a stabilised
+park typology. The primary interface is a static Astryx/React dashboard (map,
+filters, search, shareable URL); Streamlit remains the analyst view. Everything
+rebuilds from `make setup && make all-web`; tests run offline with committed
+fixtures.
 
 ## Structure du dépôt
 
 ```text
 etl/            download.py (téléchargement + manifeste), parse.py (entrepôt), geo.py (parcs)
-analysis/       eda.py (statistiques, figures), model.py (SARIMAX, backtest, KMeans)
+analysis/       eda.py (statistiques, figures), model.py (prévisions, backtest, KMeans)
 app/            app.py : application Streamlit (filtres, carte, prévisions, méthode)
 app/web/        tableau de bord Astryx (React + Vite), interface principale
 export/         export_web.py : artefacts Python -> JSON statiques pour app/web
@@ -279,7 +341,18 @@ La suite couvre le manifeste de téléchargement, le parseur (y compris la porte
 d'intégrité TOTAL = somme), le rapprochement géographique, les statistiques de
 l'EDA, le backtest et les helpers purs de l'application.
 
-## Licence et attribution
+## Licence et données
 
-Code : usage pédagogique dans le cadre du module Open Data de l'IPSSI.
-Données : © City of New York / NYPD, diffusées via NYC Open Data et nyc.gov.
+Le code de ce dépôt est publié sous [licence MIT](LICENSE) : réutilisation,
+modification et redistribution libres, avec conservation de la notice de
+copyright.
+
+Les données ne sont pas couvertes par cette licence. Elles restent la propriété
+de leurs producteurs et sont diffusées par la ville de New York selon les
+[conditions d'utilisation de NYC Open Data](https://opendata.cityofnewyork.us/overview/#terms) :
+
+- [NYPD, Park Crime Statistics](https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page) — © City of New York / NYPD ;
+- [NYC Parks Properties](https://data.cityofnewyork.us/Recreation/Parks-Properties/enfh-gkve) — © City of New York / NYC Parks.
+
+Le dépôt ne fait que lire ces sources ; aucun contenu n'est modifié dans son
+fond.

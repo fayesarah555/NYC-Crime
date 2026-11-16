@@ -1,11 +1,13 @@
-// Four controls driving every Exploration view from one Filters object.
+// Four controls driving every Exploration view from one Filters object,
+// plus the reset that also clears the URL parameters.
+import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
-import {VStack} from '@astryxdesign/core/Layout';
+import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Grid} from '@astryxdesign/core/Grid';
 import {MultiSelector} from '@astryxdesign/core/MultiSelector';
 import {Slider} from '@astryxdesign/core/Slider';
 import {TextInput} from '@astryxdesign/core/TextInput';
-import {Heading, Text} from '@astryxdesign/core/Text';
+import {Heading} from '@astryxdesign/core/Text';
 import {
   BOROUGH_OPTIONS,
   CRIME_TYPES,
@@ -17,15 +19,27 @@ export default function FilterPanel({
   filters,
   quarters,
   onChange,
+  onReset,
 }: {
   filters: Filters;
   quarters: string[];
   onChange: (filters: Filters) => void;
+  onReset?: () => void;
 }) {
   return (
     <Card>
       <VStack gap={4}>
-        <Heading level={3}>Filtres</Heading>
+        <HStack hAlign="between" vAlign="center">
+          <Heading level={3}>Filtres</Heading>
+          {onReset !== undefined && (
+            <Button
+              variant="secondary"
+              size="sm"
+              label="Réinitialiser"
+              onClick={onReset}
+            />
+          )}
+        </HStack>
         <Grid columns={{minWidth: 220, repeat: 'fit'}} gap={4}>
           <MultiSelector
             label="Arrondissements"
@@ -66,10 +80,6 @@ export default function FilterPanel({
             hasClear
           />
         </Grid>
-        <Text type="supporting" color="secondary">
-          La période filtre la série trimestrielle ; les totaux par parc sont
-          toutes périodes (export statique sans détail parc × trimestre).
-        </Text>
       </VStack>
     </Card>
   );

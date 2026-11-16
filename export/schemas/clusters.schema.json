@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "clusters.schema.json",
+  "title": "clusters.json",
+  "$comment": "Numbers are finite: the exporter validates with a finite type checker (NaN/Infinity are not JSON).",
+  "type": "object",
+  "required": ["k", "silhouette", "features", "profiles", "parks"],
+  "properties": {
+    "k": {"type": "integer", "minimum": 1},
+    "silhouette": {"type": "number"},
+    "features": {"type": "array", "items": {"type": "string"}},
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cluster", "n_parks", "total_crimes", "mean_acres",
+          "mean_silhouette", "top_type", "name"
+        ],
+        "properties": {
+          "cluster": {"type": "integer", "minimum": 0},
+          "n_parks": {"type": "integer", "minimum": 0},
+          "total_crimes": {"type": "integer", "minimum": 0},
+          "mean_acres": {"type": "number"},
+          "mean_silhouette": {"type": "number"},
+          "top_type": {"type": "string"},
+          "name": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "parks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "park", "borough", "cluster", "sample_silhouette",
+          "crimes_per_100_acres"
+        ],
+        "properties": {
+          "park": {"type": "string"},
+          "borough": {"type": "string"},
+          "cluster": {"type": "integer", "minimum": 0},
+          "sample_silhouette": {"type": "number"},
+          "crimes_per_100_acres": {"type": ["number", "null"], "minimum": 0}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -7,6 +7,7 @@ testées par tests/test_app.py.
 
 from __future__ import annotations
 
+import html
 import json
 import sys
 import unicodedata
@@ -255,7 +256,14 @@ def render_map(selection, geo):
     view = pdk.ViewState(
         latitude=40.73, longitude=-73.94, zoom=10, pitch=0, bearing=0
     )
-    tooltip = {"html": "<b>{park}</b><br/>{total} crimes, délit dominant : {crime_type}"}
+    # Park names come from a public dataset; escape them before pydeck embeds
+    # the string in tooltip HTML.
+    map_df["park_html"] = map_df["park"].map(html.escape)
+    map_df["crime_type_html"] = map_df["crime_type"].map(html.escape)
+    tooltip = {
+        "html": "<b>{park_html}</b><br/>{total} crimes, délit dominant : "
+        "{crime_type_html}"
+    }
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, tooltip=tooltip))
 
 

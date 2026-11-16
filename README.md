@@ -61,9 +61,15 @@ make warehouse  # parse -> data/processed/park_crime_long.csv + data/warehouse.d
 ```
 
 Seul le sous-ensemble consommé par le tableau de bord est versionné :
-`app/web/src/data/*.json` (sept fichiers, < 2 Mo, cubes parc × trimestre × type
-inclus). C'est la charge utile du déploiement : le build web n'a besoin d'aucune
-donnée Python et le bundle n'embarque qu'une seule copie.
+`app/web/src/data/*.json` (huit fichiers, < 2 Mo, cubes parc × trimestre × type
+et palette inclus). C'est la charge utile du déploiement : le build web n'a
+besoin d'aucune donnée Python et le bundle n'embarque qu'une seule copie.
+
+Les agrégats par parc ne sont pas publiés dans Socrata : la découverte se fait
+sur la page NYPD (liens stables), avec un manifeste et une vérification
+d'empreintes (`data/manifest.lock.json`). L'API Socrata ne sert qu'au référentiel
+des parcs. Une page modifiée ou un classeur manquant produit un manifeste
+incomplet et un code de sortie non nul au lieu d'un succès silencieux.
 
 ## Architecture
 

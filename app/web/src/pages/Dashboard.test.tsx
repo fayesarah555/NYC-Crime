@@ -82,10 +82,11 @@ describe('park drill-down', () => {
 });
 
 describe('URL state', () => {
-  it('restores ?tab=previsions&borough=MANHATTAN on load', () => {
+  it('restores ?tab=previsions&borough=MANHATTAN on load', async () => {
     window.history.replaceState(null, '', '/?tab=previsions&borough=MANHATTAN');
     render(<Dashboard />);
-    expect(screen.getByText('SEASONAL_NAIVE')).toBeTruthy();
+    // The forecast tab is code-split, so its content arrives asynchronously.
+    expect(await screen.findByText('SEASONAL_NAIVE')).toBeTruthy();
     expect(window.location.search).toBe('?tab=previsions&borough=MANHATTAN');
   });
 

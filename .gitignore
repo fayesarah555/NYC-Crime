@@ -21,6 +21,3 @@ app/web/e2e/screenshots/
 app/web/test-results/
 app/web/coverage/
 app/web/playwright-report/
-
-.vercel
-.env*

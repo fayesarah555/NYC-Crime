@@ -1,7 +1,7 @@
 // Page shell, navigation and the three tabs. One Filters state drives every
 // Exploration view; Prévisions and Méthode read static artefacts only.
 // Filters and the tab live in the URL (see lib/urlState).
-import {useMemo, useState} from 'react';
+import {lazy, Suspense, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 import {Card} from '@astryxdesign/core/Card';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
@@ -29,7 +29,8 @@ import {
   TopParksChart,
   TrendChart,
 } from '../components/Charts';
-import ForecastTab from '../components/ForecastTab';
+// recharts only ships when the forecast tab is opened
+const ForecastTab = lazy(() => import('../components/ForecastTab'));
 import MethodTab from '../components/MethodTab';
 import {
   boroughTypeMatrix,
@@ -426,7 +427,9 @@ function DashboardContent() {
                 role="tabpanel"
                 id="panel-previsions"
                 aria-labelledby="tab-previsions">
-                <ForecastTab />
+                <Suspense fallback={<Text type="body">Chargement des prévisions…</Text>}>
+                  <ForecastTab />
+                </Suspense>
               </VStack>
             )}
             {tab === 'methode' && (

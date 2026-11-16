@@ -1,0 +1,326 @@
+{
+  "workbooks": [
+    {
+      "filename": "nyc-park-crime-stats-q4-2014.xlsx",
+      "bytes": 90933,
+      "sha256": "ab6c3628dbccf777404f210e10cdf244216c7d167d32007e2442976f2e43070b",
+      "quarter": 4,
+      "year": 2014
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2015.xlsx",
+      "bytes": 103032,
+      "sha256": "67f1ee2d652a5a7fd3358e52ffdc8c1d6fbb8c30638869fe2e72e684edc0eb10",
+      "quarter": 1,
+      "year": 2015
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2015.xlsx",
+      "bytes": 93297,
+      "sha256": "be2546ad6e7ab3b9fdfea3b0382dec24c5ca9d6cefdf73fce255ff6ea8eaf0cd",
+      "quarter": 2,
+      "year": 2015
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2015.xlsx",
+      "bytes": 88657,
+      "sha256": "0b0d81551acfe446dd60df70e8b3a67788510165160a994a04abb6dc191ead17",
+      "quarter": 3,
+      "year": 2015
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2015.xlsx",
+      "bytes": 98214,
+      "sha256": "d6adcbea14cfa268791ee540ae86a31b95d44f33b3b7c1fdb53bfa150c957833",
+      "quarter": 4,
+      "year": 2015
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2016.xlsx",
+      "bytes": 82628,
+      "sha256": "10bd121c78cf3919948898a8362a8f7c642cf74e92d22d803945ea1059134a2f",
+      "quarter": 1,
+      "year": 2016
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2016.xlsx",
+      "bytes": 83780,
+      "sha256": "1fe03da0076ae0263ec314ca6acc7136cfb3b2f12268a44b371d5c10bb7acbc4",
+      "quarter": 2,
+      "year": 2016
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2016.xlsx",
+      "bytes": 83522,
+      "sha256": "dfd2413397e5f4dd38e2398a51ab7353023c32370d320639e21fa53b79740940",
+      "quarter": 3,
+      "year": 2016
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2016.xlsx",
+      "bytes": 83145,
+      "sha256": "a88ffdb61f7dd829f3f5a9c51a339833d994cd8781cb9e2a368b8aa4c74b53e5",
+      "quarter": 4,
+      "year": 2016
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2017.xlsx",
+      "bytes": 81182,
+      "sha256": "de9ed072c96c41c1c3cfe5db834bf0a3c0dc8e4a1a2ac73f32bae8abdea0c0c1",
+      "quarter": 1,
+      "year": 2017
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2017.xlsx",
+      "bytes": 80613,
+      "sha256": "c7d93aa8e2122b890134ebeeaf2d2f69430dfea94ff38526ead7f7e25a708d77",
+      "quarter": 2,
+      "year": 2017
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2017.xlsx",
+      "bytes": 84217,
+      "sha256": "6ec5179a23ab7c498975f4e31530cc5223f31f393a8c1cd414c0b9d2a8c9bb1c",
+      "quarter": 3,
+      "year": 2017
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2017.xlsx",
+      "bytes": 83947,
+      "sha256": "54916b804e422b0d6842fb811c0bb6d938e1239d1f693aaafc9b7a9edc6f4e88",
+      "quarter": 4,
+      "year": 2017
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2018.xlsx",
+      "bytes": 84262,
+      "sha256": "e9bee98d5e79c6c83e147d95ad93c1ac7755828df81b1c7c9149175dffae1daf",
+      "quarter": 1,
+      "year": 2018
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2018.xlsx",
+      "bytes": 83824,
+      "sha256": "43e1c9822fa08371167394665aa904d8a83a312060b91aefc6124cc9e94199ee",
+      "quarter": 2,
+      "year": 2018
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2018.xlsx",
+      "bytes": 84315,
+      "sha256": "9ec25c56b8e7a156d3a49eb68d92416538e8f90878cf636864e03265dffb52ed",
+      "quarter": 3,
+      "year": 2018
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2018.xlsx",
+      "bytes": 83402,
+      "sha256": "b81ef0ace0703fba3a9071484c674a067095a94090425690818592a273531195",
+      "quarter": 4,
+      "year": 2018
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2019.xlsx",
+      "bytes": 88831,
+      "sha256": "0831a0464e7e667c69b1fbdc523089fa9041c9bb0fc22759496df9f1f4ad547a",
+      "quarter": 1,
+      "year": 2019
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2019.xlsx",
+      "bytes": 83939,
+      "sha256": "90fd66e509a65047cffe29acd3615c3793e4039e644bb015ea37dc252ea5e54f",
+      "quarter": 2,
+      "year": 2019
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2019.xlsx",
+      "bytes": 173056,
+      "sha256": "f8ad4fcb791b5a1ad4e0f4e2c936543de91676406fd2c3d313a7f7241709da5c",
+      "quarter": 3,
+      "year": 2019
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2019.xlsx",
+      "bytes": 83900,
+      "sha256": "b3cc1ca77eadca4740d689489521fd4829640ee36fd59b39f9e0452099e4d021",
+      "quarter": 4,
+      "year": 2019
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2020.xlsx",
+      "bytes": 84236,
+      "sha256": "22e4f9963b9e95e347ebf34ab4bd3bfe06db8db0ff1fda221609851086ea4d07",
+      "quarter": 2,
+      "year": 2020
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2020.xlsx",
+      "bytes": 83684,
+      "sha256": "96dee51049f9b516d0b02e014145ed8ce80d1baccdd0519983b5050026d3dba4",
+      "quarter": 3,
+      "year": 2020
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2020.xlsx",
+      "bytes": 83292,
+      "sha256": "297a6134040beeddf1023d877a843479a3cee4386d9c45a851d5e5d339e1c898",
+      "quarter": 4,
+      "year": 2020
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2021.xlsx",
+      "bytes": 84783,
+      "sha256": "d9c9c75e25e7cc7010d9265e9151e90f9a1fbc5a8db7a18b0f9c333bb993adb8",
+      "quarter": 1,
+      "year": 2021
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2021.xlsx",
+      "bytes": 84308,
+      "sha256": "32d68447206f499aebbf2a6aa0cd623acd7e244ae983ec3b63f3264c5ab8c927",
+      "quarter": 2,
+      "year": 2021
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2021.xlsx",
+      "bytes": 81678,
+      "sha256": "013938f820c07e7647a2a25ad0ae82b800065ff3de1cc8ba67258d8832c9e3c0",
+      "quarter": 3,
+      "year": 2021
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2021.xlsx",
+      "bytes": 81447,
+      "sha256": "770f06ade9a9b05d3cc3543b22805471fc6c0e94a48c29d3e61b80ccc3bed112",
+      "quarter": 4,
+      "year": 2021
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2022.xlsx",
+      "bytes": 80903,
+      "sha256": "820fed3689881f2772bb54f1179df3daef0b168946cd9688e194862be4e361eb",
+      "quarter": 1,
+      "year": 2022
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2022.xlsx",
+      "bytes": 83131,
+      "sha256": "eee8db154b08c7e0eb1a5ecd1d421c3cdfd77f1b8674ac0fe79afa8e158d9bb8",
+      "quarter": 2,
+      "year": 2022
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2022.xlsx",
+      "bytes": 81280,
+      "sha256": "652d4e2264c6df8fdf057f46efa6471c50bdd9c270300b5cee3d4c0363349dc4",
+      "quarter": 3,
+      "year": 2022
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2022.xlsx",
+      "bytes": 80316,
+      "sha256": "457f2190393e118a7e7500aa2eed7d277f6d267db79213002f6184508373e193",
+      "quarter": 4,
+      "year": 2022
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2023.xlsx",
+      "bytes": 83745,
+      "sha256": "106646aa7996e06c0b253762c94abacc87a4a384469303cb73f090eaea5e8045",
+      "quarter": 1,
+      "year": 2023
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2023.xlsx",
+      "bytes": 80582,
+      "sha256": "02f3d9618152a9e0429077539a407e45853ee3ad3d8a38aea931b3d95e1d0766",
+      "quarter": 2,
+      "year": 2023
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2023.xlsx",
+      "bytes": 80242,
+      "sha256": "df95b4fe8ae963dfb829d74ba050a42302750024f34111a99b3d5ed94d093ddc",
+      "quarter": 3,
+      "year": 2023
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2023.xlsx",
+      "bytes": 80534,
+      "sha256": "912abb2fc596ab30ef16da76dcda8d24608f1401518fc45249a07d2f87cac9b9",
+      "quarter": 4,
+      "year": 2023
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2024.xlsx",
+      "bytes": 80887,
+      "sha256": "8c80dd9d1834a7d5a3243f8fc6d457af2de7c436b71928ed8747c65769571366",
+      "quarter": 1,
+      "year": 2024
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2024.xlsx",
+      "bytes": 76327,
+      "sha256": "d677d5488afea36d66455ecbc22489a3f8109cb14bdc2b5d4a55b5d25ed2013f",
+      "quarter": 2,
+      "year": 2024
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2024.xlsx",
+      "bytes": 83532,
+      "sha256": "0bd3e4ba0e1ad622c52335ff9e50489b1b0ae8ade6434e9f419341cb6d7229eb",
+      "quarter": 3,
+      "year": 2024
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2024.xlsx",
+      "bytes": 81343,
+      "sha256": "d6e3c149d722f23bd8474c0e0e5f03ab34d6f14fa8f07ba1f6897e9ef0ce0032",
+      "quarter": 4,
+      "year": 2024
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2025.xlsx",
+      "bytes": 77635,
+      "sha256": "f32ee3f7c2399348e5fbe85a05d273c1d39c5724f2b1a3780bc130805630a7a4",
+      "quarter": 1,
+      "year": 2025
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2025.xlsx",
+      "bytes": 80944,
+      "sha256": "a00a85aae06e948eefa93ca1181caf8ff343943e31d106ce9813dbf7be8d4655",
+      "quarter": 2,
+      "year": 2025
+    },
+    {
+      "filename": "nyc-park-crime-stats-q3-2025.xlsx",
+      "bytes": 81857,
+      "sha256": "5ed35f14fb06f1b23d989c9519713e3cc99178bfa2ecd84d4dabaf164fedc166",
+      "quarter": 3,
+      "year": 2025
+    },
+    {
+      "filename": "nyc-park-crime-stats-q4-2025.xlsx",
+      "bytes": 81154,
+      "sha256": "5ed42669855e57e7311e0b30767d8eea0ab15b77b72316f098ab942140002bfc",
+      "quarter": 4,
+      "year": 2025
+    },
+    {
+      "filename": "nyc-park-crime-stats-q1-2026.xlsx",
+      "bytes": 81924,
+      "sha256": "8da140e963711df5ff0b5d04395ba81fef6f5930ba122f1f42370da854529efb",
+      "quarter": 1,
+      "year": 2026
+    },
+    {
+      "filename": "nyc-park-crime-stats-q2-2026.xlsx",
+      "bytes": 81450,
+      "sha256": "9ddc9e5d4dd9ddd36aa27e407d12c908e94760f2b8a9720956906f612007e7e9",
+      "quarter": 2,
+      "year": 2026
+    }
+  ]
+}

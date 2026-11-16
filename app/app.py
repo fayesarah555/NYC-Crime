@@ -8,6 +8,7 @@ testées par tests/test_app.py.
 from __future__ import annotations
 
 import json
+import sys
 import unicodedata
 from pathlib import Path
 
@@ -22,6 +23,7 @@ CRIME_FILE = ROOT / "data" / "processed" / "park_crime_long.csv"
 GEO_FILE = ROOT / "data" / "processed" / "parks_geo.csv"
 FORECAST_FILE = ROOT / "outputs" / "tables" / "forecast_city.csv"
 METRICS_FILE = ROOT / "outputs" / "metrics" / "model_metrics.json"
+EDA_STATS_FILE = ROOT / "outputs" / "metrics" / "eda_stats.json"
 GEO_COVERAGE_FILE = ROOT / "outputs" / "tables" / "geo_coverage.csv"
 COVERAGE_GAPS_FILE = ROOT / "outputs" / "tables" / "coverage_gaps.csv"
 ANOMALIES_FILE = ROOT / "outputs" / "tables" / "source_anomalies.csv"
@@ -31,26 +33,29 @@ SOURCE_URL = "https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-st
 CRIME_COLUMNS = ["quarter_label", "park", "borough", "crime_type", "count"]
 GEO_COLUMNS = ["park", "borough", "lat", "lon"]
 
-TYPE_COLORS = {
-    "BURGLARY": "#4C72B0",
-    "FELONY ASSAULT": "#DD8452",
-    "GRAND LARCENY": "#55A868",
-    "GRAND LARCENY AUTO": "#C44E52",
-    "MURDER": "#8172B3",
-    "RAPE": "#937860",
-    "ROBBERY": "#DA8BC3",
-}
-UNKNOWN_COLOR = "#8C8C8C"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from palette_data import NEUTRAL_COLOR, short_labels, type_colors  # noqa: E402
 
-SHORT_TYPE_LABELS = {
-    "BURGLARY": "Cambriolage",
-    "FELONY ASSAULT": "Agression",
-    "GRAND LARCENY": "Larcin",
-    "GRAND LARCENY AUTO": "Vol de véhicule",
-    "MURDER": "Meurtre",
-    "RAPE": "Viol",
-    "ROBBERY": "Vol qualifié",
-}
+# One palette for Streamlit, the web dashboard and the figures (palette_data.py).
+TYPE_COLORS = type_colors()
+UNKNOWN_COLOR = NEUTRAL_COLOR
+
+SHORT_TYPE_LABELS = short_labels()
+
+
+def require_artifact(path):
+    """Arrête l'application avec un message actionnable si un artefact manque."""
+    if Path(path).exists():
+        return
+    try:
+        shown = Path(path).relative_to(ROOT).as_posix()
+    except ValueError:
+        shown = str(path)
+    st.error(
+        f"Artefact manquant : `{shown}`. Lancez `make all` pour régénérer "
+        "les données et les sorties, puis rechargez la page."
+    )
+    st.stop()
 
 
 # --- Helpers purs (testés sans serveur) -------------------------------------
@@ -91,7 +96,7 @@ def totals_by(df, *columns):
 
 
 def year_ago(quarter_label):
-    """« 2026Q2 » -> « 2025Q2 »."""
+    """« 2025Q3 » -> « 2024Q3 »."""
     year, quarter = quarter_label.split("Q")
     return f"{int(year) - 1}Q{quarter}"
 
@@ -99,6 +104,29 @@ def year_ago(quarter_label):
 def count_label(count, singular, plural):
     """« 1 parc », « 2 parcs » — 0 et 1 prennent le singulier."""
     return f"{count} {singular if count <= 1 else plural}"
+
+
+def quarter_before(label):
+    """« 2025Q1 » -> « 2024Q4 »."""
+    year, quarter = label.split("Q")
+    return f"{int(year) - 1}Q4" if quarter == "1" else f"{year}Q{int(quarter) - 1}"
+
+
+def documented_missing(stats):
+    """Trimestres absents de la source, lus dans les stats EDA."""
+    labels = stats.get("missing_quarters")
+    if labels is not None:
+        return list(labels)
+    label = stats.get("missing_quarter")
+    return [label] if label else []
+
+
+def missing_quarter_notes(stats):
+    """Une phrase par trimestre absent ; aucun libellé n'est écrit ici."""
+    return [
+        f"- {label} est absent de la source : jamais traité comme zéro."
+        for label in documented_missing(stats)
+    ]
 
 
 def kpis(df):
@@ -166,22 +194,26 @@ def hex_to_rgb(value):
 
 @st.cache_data(show_spinner=False)
 def load_crimes():
+    require_artifact(CRIME_FILE)
     return pd.read_csv(CRIME_FILE, usecols=CRIME_COLUMNS)
 
 
 @st.cache_data(show_spinner=False)
 def load_geo():
+    require_artifact(GEO_FILE)
     return pd.read_csv(GEO_FILE, usecols=GEO_COLUMNS)
 
 
 @st.cache_data(show_spinner=False)
 def load_json(path):
+    require_artifact(path)
     with open(path, encoding="utf-8") as handle:
         return json.load(handle)
 
 
 @st.cache_data(show_spinner=False)
 def load_table(path):
+    require_artifact(path)
     return pd.read_csv(path)
 
 
@@ -288,7 +320,10 @@ def render_exploration(selection):
 
 
 def render_forecast():
-    metrics = load_json(METRICS_FILE)["citywide"]
+    metrics_file = load_json(METRICS_FILE)
+    metrics = metrics_file["citywide"]
+    # The interval level is the model's alpha, never a typed percentage.
+    level = round((1 - metrics_file["ci_alpha"]) * 100)
     columns = st.columns(4)
     columns[0].metric("Modèle retenu", str(metrics["selected_model"]).upper())
     columns[1].metric("MAE (backtest)", metrics["selected_mae"])
@@ -305,23 +340,37 @@ def render_forecast():
     )
 
     st.subheader("Prévisions citywide")
-    forecast = load_table(FORECAST_FILE).rename(
+    forecast = load_table(FORECAST_FILE)
+    any_clipped = "clipped" in forecast.columns and bool(forecast["clipped"].any())
+    forecast = forecast.rename(
         columns={
             "scope": "Périmètre",
             "quarter_label": "Trimestre",
             "point": "Prévision",
             "lower": "Borne basse",
             "upper": "Borne haute",
+            "clipless_lower": "Borne basse avant écrêtage",
+            "clipped": "Borne basse écrêtée à 0",
         }
     )
     st.dataframe(forecast, hide_index=True)
+    st.caption(
+        f"Bornes basse et haute : intervalle à {level} % "
+        f"(alpha = {metrics_file['ci_alpha']})."
+    )
+    if any_clipped:
+        st.caption(metrics_file.get("interval_note", {}).get("fr", ""))
 
     if FIG07_FILE.exists():
-        st.image(str(FIG07_FILE), caption="Prévision citywide et intervalle à 80 % (fig07).")
+        st.image(
+            str(FIG07_FILE),
+            caption=f"Prévision citywide et intervalle à {level} % (fig07).",
+        )
 
 
 def render_method(crimes):
     geo = load_geo()
+    stats = load_json(EDA_STATS_FILE)
     st.subheader("Sources")
     st.markdown(
         f"- NYPD, *Park Crime Statistics* : <{SOURCE_URL}>\n"
@@ -336,18 +385,34 @@ def render_method(crimes):
         f"- {crimes['quarter_label'].nunique()} trimestres, de "
         f"{crimes['quarter_label'].min()} à {crimes['quarter_label'].max()}."
     )
-    st.write("- 2020Q1 est absent de la source : jamais traité comme zéro.")
+    for note in missing_quarter_notes(stats):
+        st.write(note)
 
     st.subheader("Limites et anomalies")
     combo = crimes[crimes["borough"] == "BROOKLYN/QUEENS"]
-    st.write(
-        "- Couverture : Central Park n'apparaît qu'à partir de 2025Q1, ce qui gonfle "
-        "artificiellement la croissance 2024Q4 → 2025Q1 (voir la table des lacunes)."
-    )
-    st.write(
-        "- Parsing : une ligne Flushing Meadows Corona Park (2025Q4) est exclue, le "
-        "total publié (17) différant de la somme des lignes (18)."
-    )
+    for entry in stats.get("late_parks", []):
+        first = entry["first_quarter"]
+        st.write(
+            f"- Couverture : {entry['park'].title()} n'apparaît qu'à partir de "
+            f"{first}, ce qui gonfle artificiellement la croissance "
+            f"{quarter_before(first)} → {first} (voir la table des lacunes)."
+        )
+    for entry in stats.get("source_anomalies", []):
+        st.write(
+            f"- Parsing : {entry['park'].title()} ({entry['quarter']}) garde ses "
+            f"{len(stats['crime_types'])} composantes, flaggées total_mismatch "
+            f"(total publié {entry['total_recorded']} contre somme "
+            f"{entry['sum_computed']}) ; la ligne n'est exclue que des contrôles "
+            "TOTAL."
+        )
+    missing_quarters = stats.get("missing_column_quarters", [])
+    missing_types = stats.get("missing_column_types", [])
+    if missing_quarters and missing_types:
+        st.write(
+            f"- Colonne absente : {', '.join(missing_quarters)} n'ont pas de "
+            f"colonne {', '.join(missing_types)} ; la cellule est NULL "
+            "(count_missing=1), exclue des sommes, jamais un zéro."
+        )
     st.write(
         f"- Libellé combiné `BROOKLYN/QUEENS` : "
         f"{count_label(combo['park'].nunique(), 'parc', 'parcs')}, "
@@ -417,7 +482,8 @@ def main():
     st.title("Criminalité dans les parcs de New York")
     st.caption(
         "NYPD Park Crime Statistics : données trimestrielles par parc, de "
-        "2014Q4 à 2026Q2. Source et limites détaillées dans l'onglet Méthode."
+        f"{quarters[0]} à {quarters[-1]}. Source et limites détaillées dans "
+        "l'onglet Méthode."
     )
 
     summary = kpis(selection)

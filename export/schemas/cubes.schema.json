@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cubes.schema.json",
+  "title": "cubes.json",
+  "type": "object",
+  "required": ["quarters", "crime_types", "parks"],
+  "properties": {
+    "quarters": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "crime_types": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "parks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {"type": ["integer", "null"]}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,7 +1,7 @@
-borough,total_crimes,parks,acres,rate_per_100_acres,note
-MANHATTAN,4132,198,2815.8540000000003,146.7405625433705,
-BROOKLYN,3232,327,3858.642,83.7600378578785,
-BRONX,2423,217,7052.668000000001,34.35579272978679,
-QUEENS,2471,284,7502.623,32.93514814752121,
-BROOKLYN/QUEENS,114,5,1137.0059999999999,10.026332314869052,5 parks; borough value split between Brooklyn and Queens
-STATEN ISLAND,154,124,7321.014,2.1035337454620358,
+borough,parks,parks_with_crimes,parks_with_acreage,total_crimes,crimes_with_acreage,excluded_crimes,crime_coverage_pct,acres,rate_per_100_acres,rate_excl_central_park,central_park_crimes,central_park_acres,note
+MANHATTAN,198,148,198,4132,4132,0,100.0,2815.854,146.741,205.431,73,840.01,
+BROOKLYN,327,249,327,3232,3232,0,100.0,3858.642,83.76,83.76,0,0.0,
+BRONX,217,158,217,2423,2423,0,100.0,7052.668,34.356,34.356,0,0.0,
+QUEENS,284,184,284,2489,2489,0,100.0,7502.623,33.175,33.175,0,0.0,
+BROOKLYN/QUEENS,5,4,5,114,114,0,100.0,1137.006,10.026,10.026,0,0.0,"5 parks in the source, 4 with at least one crime; borough value split between Brooklyn and Queens"
+STATEN ISLAND,124,49,124,154,154,0,100.0,7321.014,2.104,2.104,0,0.0,

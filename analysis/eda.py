@@ -8,7 +8,9 @@ Run from the repository root:  python analysis/eda.py
 
 import json
 import math
+import re
 import sqlite3
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -22,6 +24,7 @@ from scipy.stats import chi2_contingency  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "warehouse.db"
 CSV_PATH = ROOT / "data" / "processed" / "park_crime_long.csv"
+GEO_CSV = ROOT / "data" / "processed" / "parks_geo.csv"
 FIG_DIR = ROOT / "outputs" / "figures"
 TABLE_DIR = ROOT / "outputs" / "tables"
 METRIC_DIR = ROOT / "outputs" / "metrics"
@@ -29,17 +32,14 @@ METRIC_DIR = ROOT / "outputs" / "metrics"
 DPI = 150
 FIGSIZE = (10, 6)
 
-# Okabe-Ito colorblind-safe palette.
-OKABE_ITO = [
-    "#0072B2", "#E69F00", "#009E73", "#CC79A7",
-    "#56B4E9", "#D55E00", "#000000", "#F0E442",
-]
+# Okabe-Ito colourblind-safe palette, shared with the web dashboard and
+# Streamlit through palette_data.py (the exporter serialises the same values).
+sys.path.insert(0, str(ROOT))
+from palette_data import CLUSTER_PALETTE, NEUTRAL_COLOR  # noqa: E402
+
+OKABE_ITO = CLUSTER_PALETTE + ["#000000", "#F0E442", NEUTRAL_COLOR]
 
 MONTHS_FR = {1: "Janvier", 4: "Avril", 7: "Juillet", 10: "Octobre"}
-ANOMALY_NOTE = (
-    "Anomalie source : Flushing Meadows, 2025Q4 — TOTAL 17 vs somme 18 ; "
-    "la ligne est exclue du warehouse (outputs/tables/source_anomalies.csv)."
-)
 
 
 # --------------------------------------------------------------------------
@@ -47,18 +47,154 @@ ANOMALY_NOTE = (
 # --------------------------------------------------------------------------
 
 def load_crimes():
-    """Load the long crime table from the warehouse, falling back to the CSV."""
+    """Load the long crime table and attach the stable park_id.
+
+    NULL counts stay NULL (see NULL_RULE); every consumer aggregates with
+    skipna so a missing column never enters a sum as a zero.
+    """
+    columns = (
+        "quarter_label, period_start, period_end, park, borough, size_acres, "
+        "category, crime_type, count, count_missing, total_mismatch"
+    )
     if DB_PATH.exists():
         with sqlite3.connect(DB_PATH) as conn:
-            df = pd.read_sql(
-                "SELECT quarter_label, period_start, period_end, park, borough, "
-                "size_acres, category, crime_type, count FROM crimes_long",
-                conn,
-            )
+            df = pd.read_sql(f"SELECT {columns} FROM crimes_long", conn)
     else:
         df = pd.read_csv(CSV_PATH)
     df["period_start"] = pd.to_datetime(df["period_start"])
-    return df
+    ids = pd.read_csv(GEO_CSV)[["park", "borough", "park_id"]]
+    return df.merge(ids, on=["park", "borough"], how="left")
+
+
+def quarter_range(first, last):
+    """Continuous quarter labels from first to last, inclusive."""
+    year, quarter = (int(part) for part in first.split("Q"))
+    last_year, last_quarter = (int(part) for part in last.split("Q"))
+    labels = []
+    while (year, quarter) <= (last_year, last_quarter):
+        labels.append(f"{year}Q{quarter}")
+        quarter += 1
+        if quarter == 5:
+            year, quarter = year + 1, 1
+    return labels
+
+
+def missing_quarters(df):
+    """Quarter labels on the continuous grid with no row in the data."""
+    order = df.groupby("quarter_label")["period_start"].min().sort_values().index
+    seen = set(order)
+    return [label for label in quarter_range(order[0], order[-1]) if label not in seen]
+
+
+def missing_sentence(df):
+    """Footnote fragment naming the dataset-wide absent quarter(s)."""
+    missing = missing_quarters(df)
+    if not missing:
+        return ""
+    return f"{', '.join(missing)} absent des données source. "
+
+
+def quarter_from_workbook(name):
+    """'...q4-2025.xlsx' -> '2025Q4'."""
+    match = re.search(r"q(\d)-(\d{4})\.xlsx$", str(name))
+    return f"{match.group(2)}Q{match.group(1)}" if match else ""
+
+
+def source_anomaly_table():
+    """Integrity flags written by etl/parse.py; empty when absent."""
+    path = TABLE_DIR / "source_anomalies.csv"
+    if not path.exists():
+        return pd.DataFrame(
+            columns=["workbook", "park", "total_recorded", "sum_computed", "kind"]
+        )
+    return pd.read_csv(path)
+
+
+def source_anomaly_entries():
+    """Structured TOTAL-mismatch entries for the metrics JSON."""
+    flags = source_anomaly_table()
+    if flags.empty or "kind" not in flags:
+        return []
+    return [
+        {
+            "park": row.park,
+            "quarter": quarter_from_workbook(row.workbook),
+            "total_recorded": int(row.total_recorded),
+            "sum_computed": int(row.sum_computed),
+        }
+        for row in flags[flags["kind"].eq("total_mismatch")].itertuples()
+    ]
+
+
+def anomaly_note():
+    """Figure footnote derived from the recorded TOTAL mismatches."""
+    entries = source_anomaly_entries()
+    if not entries:
+        return "Aucune anomalie TOTAL signalée dans la source."
+    details = " ; ".join(
+        f"{entry['park'].title()}, {entry['quarter']} — TOTAL "
+        f"{entry['total_recorded']} vs somme {entry['sum_computed']}"
+        for entry in entries
+    )
+    return (
+        f"Anomalie source : {details} ; les composantes sont conservées, la "
+        "ligne est exclue des contrôles TOTAL seulement "
+        "(outputs/tables/source_anomalies.csv)."
+    )
+
+
+def missing_column_rows(df):
+    """Rows whose count is NULL because the workbook lacks that crime column."""
+    if "count_missing" not in df:
+        return df.iloc[0:0]
+    return df[df["count_missing"].eq(1)]
+
+
+def null_rule(df):
+    """Logged exclusion rule, with the quarters/types read from the data."""
+    missing = missing_column_rows(df)
+    if missing.empty:
+        return "No NULL count: every workbook carries all crime columns."
+    quarters = ", ".join(sorted(missing["quarter_label"].unique()))
+    types = ", ".join(sorted(missing["crime_type"].unique()))
+    return (
+        f"count=NULL when the workbook lacks the crime column ({quarters}: "
+        f"{types}); NULLs are excluded from sums, rates and shares, never "
+        "imputed, never treated as 0."
+    )
+
+
+def missing_column_anomaly(df):
+    """English summary of the absent-column anomalies, derived from the data."""
+    missing = missing_column_rows(df)
+    if missing.empty:
+        return "No workbook lacks a crime column."
+    quarters = ", ".join(sorted(missing["quarter_label"].unique()))
+    types = ", ".join(sorted(missing["crime_type"].unique()))
+    return (
+        f"{quarters} have no {types} column: count is NULL with "
+        "count_missing=1, never 0 (outputs/tables/source_anomalies.csv)"
+    )
+
+
+def late_parks(df):
+    """Parks whose first observed quarter is later than the dataset's first."""
+    order = df.groupby("quarter_label")["period_start"].min().sort_values().index
+    first = order[0]
+    firsts = df.sort_values("period_start").groupby("park_id")["quarter_label"].first()
+    names = df.groupby("park_id")["park"].first()
+    return [
+        {"park": names[park_id], "first_quarter": label}
+        for park_id, label in firsts.items()
+        if label != first
+    ]
+
+
+def p_value_display(p_value):
+    """'p < 1e-N' with N the largest power of ten the value stays below."""
+    if not p_value or p_value <= 0:
+        return "p < 1e-300"
+    return f"p < 1e-{math.floor(-math.log10(p_value))}"
 
 
 def chi_square(table):
@@ -107,25 +243,60 @@ def borough_type_counts(df):
     )
 
 
-def borough_rate_table(df):
-    """Crime rate per 100 acres by borough.
+def park_acres(df):
+    """Latest non-null size_acres per park_id (not the first row's value)."""
+    ordered = df.dropna(subset=["size_acres"]).sort_values("period_start")
+    return ordered.groupby("park_id")["size_acres"].last()
 
-    Acres are taken once per distinct park so summing over crime types or
-    quarters does not double-count a park's acreage.
+
+def borough_rate_table(df):
+    """Crime rate per 100 acres by borough, perimeter and coverage stated.
+
+    The numerator and denominator are restricted to parks with acreage; the
+    excluded crime volume is reported, never silently dropped. A second,
+    consistent-perimeter rate excludes Central Park, whose crime series starts
+    later than the rest while its acreage is counted in full.
     """
-    crimes = df.groupby("borough")["count"].sum()
-    parks = df.groupby("borough")["park"].nunique()
-    acres = (
-        df.groupby(["borough", "park"])["size_acres"].first()
-        .groupby("borough").sum()
+    park_rows = df.groupby(["park_id", "park", "borough"], as_index=False).agg(
+        total_crimes=("count", "sum"),
     )
-    table = pd.DataFrame({
-        "total_crimes": crimes,
-        "parks": parks,
-        "acres": acres,
-    }).dropna()
-    table["rate_per_100_acres"] = [
-        rate_per_100_acres(r.total_crimes, r.acres) for r in table.itertuples()
+    park_rows["acres"] = park_rows["park_id"].map(park_acres(df))
+    park_rows["has_acres"] = park_rows["acres"].notna()
+    park_rows["is_central"] = park_rows["park"].eq("CENTRAL PARK")
+
+    table = []
+    for borough, group in park_rows.groupby("borough"):
+        rated = group[group["has_acres"]]
+        central = rated[rated["is_central"]]
+        total = float(group["total_crimes"].sum())
+        rated_crimes = float(rated["total_crimes"].sum())
+        rated_acres = float(rated["acres"].sum())
+        excl_crimes = rated_crimes - float(central["total_crimes"].sum())
+        excl_acres = rated_acres - float(central["acres"].sum())
+        table.append({
+            "borough": borough,
+            "parks": int(len(group)),
+            "parks_with_crimes": int((group["total_crimes"] > 0).sum()),
+            "parks_with_acreage": int(len(rated)),
+            "total_crimes": int(total),
+            "crimes_with_acreage": int(rated_crimes),
+            "excluded_crimes": int(total - rated_crimes),
+            "crime_coverage_pct": round(rated_crimes / total * 100, 2) if total else 0.0,
+            "acres": round(rated_acres, 3),
+            "rate_per_100_acres": round(rate_per_100_acres(rated_crimes, rated_acres), 3),
+            "rate_excl_central_park": round(
+                rate_per_100_acres(excl_crimes, excl_acres), 3
+            ),
+            "central_park_crimes": int(central["total_crimes"].sum()),
+            "central_park_acres": round(float(central["acres"].sum()), 3),
+        })
+    table = pd.DataFrame(table).set_index("borough")
+    table["note"] = [
+        f"{int(row.parks)} parks in the source, {int(row.parks_with_crimes)} "
+        "with at least one crime; borough value split between Brooklyn and "
+        "Queens"
+        if borough == "BROOKLYN/QUEENS" else ""
+        for borough, row in table.iterrows()
     ]
     return table.sort_values("rate_per_100_acres", ascending=False)
 
@@ -149,7 +320,7 @@ def zero_share_by_quarter(df):
     park with zero crimes (fill_value=0 used to invent those rows).
     """
     per_park = df.pivot_table(
-        index="quarter_label", columns="park", values="count", aggfunc="sum",
+        index="quarter_label", columns="park_id", values="count", aggfunc="sum",
     )
     order = df.groupby("quarter_label")["period_start"].min().sort_values().index
     per_park = per_park.reindex(order)
@@ -176,10 +347,12 @@ def latest_complete_yoy(df, totals):
     cur = float(counts.loc[latest, "crimes"])
     prev = float(counts.loc[previous, "crimes"])
 
-    first_seen = df.groupby("park")["period_start"].min()
-    new_parks = sorted(first_seen[first_seen >= pd.Timestamp(latest, 1, 1)].index)
+    first_seen = df.groupby("park_id")["period_start"].min()
+    names = df.groupby("park_id")["park"].first()
+    new_ids = first_seen[first_seen >= pd.Timestamp(latest, 1, 1)].index
+    new_parks = sorted(names[new_ids])
     latest_rows = df[df["period_start"].dt.year == latest]
-    new_crimes = int(latest_rows.loc[latest_rows["park"].isin(new_parks), "count"].sum())
+    new_crimes = int(latest_rows.loc[latest_rows["park_id"].isin(new_ids), "count"].sum())
     cur_excl = cur - new_crimes
     yoy_excl = (cur_excl - prev) / prev * 100.0 if prev else 0.0
     names = ", ".join(new_parks) if new_parks else "aucun parc"
@@ -246,8 +419,8 @@ def fig01_quarterly_trend(df):
              f"({yoy['latest_complete_year_excluding_new_parks_crimes']}) vs "
              f"{yoy['previous_year']} ({yoy['previous_year_crimes']}) = "
              f"{yoy['yoy_excluding_new_parks_pct']:+.2f} % (chiffre inclusif "
-             f"{yoy['yoy_change_pct']:+.2f} %). 2020Q1 absent des données "
-             "source. " + ANOMALY_NOTE,
+             f"{yoy['yoy_change_pct']:+.2f} %). " + missing_sentence(df)
+             + anomaly_note(),
              fontsize=6, color="#555555", wrap=True)
     _save(fig, "fig01_quarterly_trend.png")
 
@@ -271,9 +444,15 @@ def fig02_seasonality(df):
     ax2.set_ylabel("Crimes moyens par trimestre")
     ax2.set_ylim(bottom=0)
     fig.suptitle("Saisonnalité des crimes dans les parcs")
+    per_season = (
+        quarterly_totals(df)["quarter_label"].str[-1].value_counts().sort_index()
+    )
+    span = ", ".join(
+        f"T{quarter} sur {int(quarters)} trimestres"
+        for quarter, quarters in per_season.items()
+    )
     fig.text(0.01, 0.01,
-             "Moyennes T1/T3 calculées sur 11 trimestres, T2/T4 sur 12 : "
-             "2020Q1 est absent des données source.",
+             f"Moyennes calculées avec {span}. " + missing_sentence(df),
              fontsize=7, color="#555555")
     _save(fig, "fig02_seasonality.png")
 
@@ -299,31 +478,98 @@ def fig03_borough_type_heatmap(df):
 
 
 def park_totals(df):
-    totals = df.groupby(["park", "borough"])["count"].sum().reset_index()
+    totals = (
+        df.groupby(["park_id", "park", "borough"])["count"].sum().reset_index()
+    )
     return totals.sort_values("count", ascending=False)
 
 
 def coverage_gaps(df):
-    """Parks whose first or last appearance is not the dataset boundary."""
-    first_bound = df["period_start"].min()
-    last_bound = df["period_start"].max()
-    first = df.groupby("park")["period_start"].min()
-    last = df.groupby("park")["period_start"].max()
-    total = df.groupby("park")["count"].sum()
-    parks = first.index[(first > first_bound) | (last < last_bound)]
-    qmap = df.drop_duplicates("period_start").set_index("period_start")["quarter_label"]
-    return pd.DataFrame({
-        "park": parks,
-        "first_quarter": [qmap[s] for s in first.loc[parks]],
-        "last_quarter": [qmap[s] for s in last.loc[parks]],
-        "total_crimes": [int(total[p]) for p in parks],
-    }).sort_values("park").reset_index(drop=True)
+    """Per-park gaps against the expected quarter grid.
+
+    A park-quarter is covered only when a row carries a non-NULL count and
+    total_mismatch = 0, so the flagged Flushing Meadows 2025Q4 row is a gap
+    even though its components are kept. Internal gaps and boundary gaps are
+    both listed; a quarter absent dataset-wide is reported separately.
+    """
+    order = (
+        df.groupby("quarter_label")["period_start"].min().sort_values().index
+    )
+    grid = list(order)
+    index = {label: i for i, label in enumerate(grid)}
+    dataset_first, dataset_last = grid[0], grid[-1]
+
+    rows = []
+    for (_, park, borough), group in df.groupby(["park_id", "park", "borough"]):
+        usable = group.loc[
+            group["total_mismatch"].eq(0) & group["count"].notna(), "quarter_label"
+        ]
+        covered = set(usable)
+        seen = set(group["quarter_label"])
+        first = min(seen, key=index.__getitem__)
+        last = max(seen, key=index.__getitem__)
+        missing = [
+            (label, "total_mismatch" if label in seen else "no_rows")
+            for label in grid[index[first] : index[last] + 1]
+            if label not in covered
+        ]
+        boundary = first != dataset_first or last != dataset_last
+        if not missing and not boundary:
+            continue
+        rows.append({
+            "park": park,
+            "borough": borough,
+            "first_quarter": first,
+            "last_quarter": last,
+            "missing_quarters": " ".join(label for label, _ in missing),
+            "gap_reasons": "; ".join(f"{label}: {why}" for label, why in missing),
+            "n_missing": len(missing),
+            "total_crimes": int(group["count"].sum()),
+        })
+    return (
+        pd.DataFrame(rows)
+        .sort_values("park")
+        .reset_index(drop=True)
+    )
+
+
+def coverage_gap_sentence(df):
+    """Footnote describing the gaps listed in coverage_gaps.csv."""
+    gaps = coverage_gaps(df)
+    order = df.groupby("quarter_label")["period_start"].min().sort_values().index
+    first = order[0]
+    boundary, internal, mismatch = [], [], []
+    for row in gaps.itertuples():
+        if row.first_quarter != first:
+            boundary.append(f"{row.park.title()} avant {row.first_quarter}")
+        for label, why in re.findall(r"(\S+): (\S+)", row.gap_reasons):
+            if why == "no_rows":
+                internal.append(f"{row.park.title()} {label}")
+            elif why == "total_mismatch":
+                mismatch.append(f"{row.park.title()} {label}")
+    parts = ["Part calculée sur les parcs présents au trimestre."]
+    if boundary:
+        parts.append(
+            "Segments absents en amont, donc exclus : "
+            + ", ".join(boundary) + "."
+        )
+    if internal:
+        parts.append("Trous internes exclus : " + ", ".join(internal) + ".")
+    if mismatch:
+        parts.append(
+            "Conservés via leurs composantes (total_mismatch) : "
+            + ", ".join(mismatch) + "."
+        )
+    missing = missing_sentence(df).strip()
+    if missing:
+        parts.append(missing)
+    return " ".join(parts)
 
 
 def fig04_top_parks(df):
     top = park_totals(df).head(15)
-    types = df.groupby(["park", "crime_type"])["count"].sum().unstack(fill_value=0)
-    types = types.reindex(top["park"])
+    types = df.groupby(["park_id", "crime_type"])["count"].sum().unstack(fill_value=0)
+    types = types.reindex(top["park_id"])
     top = top.iloc[::-1]
     types = types.iloc[::-1]
     fig, ax = plt.subplots(figsize=(10, 7))
@@ -333,10 +579,14 @@ def fig04_top_parks(df):
         ax.barh(top["park"], values, left=left, label=crime_type,
                 color=OKABE_ITO[i])
         left += values
-    ax.set_xlabel("Nombre de crimes (2014Q4–2026Q2)")
-    ax.set_title("Top 15 des parcs par nombre total de crimes")
+    totals = quarterly_totals(df)
+    ax.set_xlabel(
+        f"Nombre de crimes ({totals['quarter_label'].iloc[0]}–"
+        f"{totals['quarter_label'].iloc[-1]})"
+    )
+    ax.set_title(f"Top {len(top)} des parcs par nombre total de crimes")
     ax.legend(ncol=4, fontsize=7, loc="lower right")
-    fig.text(0.01, 0.01, ANOMALY_NOTE, fontsize=6, color="#555555")
+    fig.text(0.01, 0.01, anomaly_note(), fontsize=6, color="#555555")
     _save(fig, "fig04_top_parks.png")
 
 
@@ -355,10 +605,14 @@ def fig05_rate_per_100acres(df):
     ax.set_xlabel("Crimes pour 100 acres")
     ax.set_title("Taux de criminalité par borough pour 100 acres")
     ax.set_xlim(0, table["rate_per_100_acres"].max() * 1.35)
+    combined = table.loc["BROOKLYN/QUEENS"]
     fig.text(0.01, 0.01,
-             "Taux = somme des crimes du borough / somme des acres des parcs "
-             "distincts x 100. BROOKLYN/QUEENS (combiné) : 5 parcs dont la "
-             "valeur de borough est partagée entre Brooklyn et Queens.",
+             "Taux = crimes des parcs dotés d'une surface / somme de leurs "
+             "acres (dernière valeur connue) x 100 ; les crimes des parcs sans "
+             "surface sont exclus et comptés à part (rate_by_borough.csv). "
+             f"BROOKLYN/QUEENS (combiné) : {int(combined['parks'])} parcs dans "
+             f"la source, {int(combined['parks_with_crimes'])} avec au moins "
+             "un crime.",
              fontsize=7, color="#555555")
     _save(fig, "fig05_rate_per_100acres.png")
 
@@ -376,11 +630,7 @@ def fig06_zero_share(df):
     ax.set_ylabel("Parcs sans crime (%)")
     ax.set_title("Part des parcs sans aucun crime majeur par trimestre")
     ax.set_ylim(0, 100)
-    fig.text(0.01, 0.01,
-             "Part calculée sur les parcs présents au trimestre. Segments "
-             "absents en amont, donc exclus : Central Park avant 2025Q1, "
-             "Corona Health Sanctuary 2022Q2, Flushing Meadows 2025Q4. "
-             "2020Q1 absent des données source.",
+    fig.text(0.01, 0.01, coverage_gap_sentence(df),
              fontsize=7, color="#555555", wrap=True)
     _save(fig, "fig06_zero_share.png")
 
@@ -389,11 +639,45 @@ def fig06_zero_share(df):
 # Tables and metrics
 # --------------------------------------------------------------------------
 
+def source_sensitivity(df):
+    """Both city totals for each flagged TOTAL mismatch.
+
+    city_total_from_components counts the seven kept components (what the
+    pipeline publishes); city_total_using_recorded_total would follow the
+    workbook's own TOTAL line instead.
+    """
+    columns = [
+        "park", "quarter", "total_recorded", "sum_components",
+        "city_total_from_components", "city_total_using_recorded_total",
+    ]
+    path = TABLE_DIR / "source_anomalies.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=columns)
+    flags = pd.read_csv(path)
+    city = int(df["count"].sum())
+    rows = []
+    for entry in flags[flags["kind"] == "total_mismatch"].itertuples():
+        quarter = re.search(r"q(\d)-(\d{4})\.xlsx$", entry.workbook)
+        label = f"{quarter.group(2)}Q{quarter.group(1)}"
+        cell = df[df["park"].eq(entry.park) & df["quarter_label"].eq(label)]
+        components = int(cell["count"].sum())
+        recorded = int(entry.total_recorded)
+        rows.append({
+            "park": entry.park,
+            "quarter": label,
+            "total_recorded": recorded,
+            "sum_components": components,
+            "city_total_from_components": city,
+            "city_total_using_recorded_total": city - components + recorded,
+        })
+    return pd.DataFrame(rows, columns=columns)
+
+
 def write_tables(df):
     top = park_totals(df).head(15)
-    types = df.groupby(["park", "crime_type"])["count"].sum().unstack(fill_value=0)
+    types = df.groupby(["park_id", "crime_type"])["count"].sum().unstack(fill_value=0)
     top = top.assign(
-        **{t: top["park"].map(types[t]) for t in types.columns}
+        **{t: top["park_id"].map(types[t]) for t in types.columns}
     ).rename(columns={"count": "total"})
     top.to_csv(TABLE_DIR / "top_parks.csv", index=False)
 
@@ -408,13 +692,12 @@ def write_tables(df):
     long.to_csv(TABLE_DIR / "borough_type_share.csv", index=False)
 
     rate = borough_rate_table(df).reset_index()
-    rate["note"] = rate["borough"].map(
-        lambda b: "5 parks; borough value split between Brooklyn and Queens"
-        if b == "BROOKLYN/QUEENS" else ""
-    )
     rate.to_csv(TABLE_DIR / "rate_by_borough.csv", index=False)
 
     coverage_gaps(df).to_csv(TABLE_DIR / "coverage_gaps.csv", index=False)
+    source_sensitivity(df).to_csv(
+        TABLE_DIR / "source_anomaly_sensitivity.csv", index=False
+    )
 
     totals = quarterly_totals(df)
     totals["year"] = totals["period_start"].dt.year
@@ -447,12 +730,15 @@ def compute_stats(df):
     yoy = latest_complete_yoy(df, totals)
     zero_share = zero_share_by_quarter(df)
 
-    park_sum = df.groupby("park")["count"].sum()
+    park_sum = df.groupby("park_id")["count"].sum()
     parks_total = int(park_sum.size)
     parks_hit = int((park_sum > 0).sum())
 
     rows_total = int(len(df))
     zero_rows = int((df["count"] == 0).sum())
+    missing = missing_quarters(df)
+    park_quarters = int(df[["quarter_label", "park"]].drop_duplicates().shape[0])
+    missing_columns = missing_column_rows(df)
 
     stats = {
         "total_crimes": n,
@@ -461,7 +747,7 @@ def compute_stats(df):
         "chi2_statistic": round(statistic, 6),
         "chi2_dof": dof,
         "chi2_p_value": p_value,
-        "chi2_p_display": "p < 1e-200",
+        "chi2_p_display": p_value_display(p_value),
         "chi2_min_expected": round(float(expected.min()), 6),
         "chi2_assumption":
             "expected counts below 5 in some cells; interpret V as descriptive",
@@ -472,20 +758,40 @@ def compute_stats(df):
         "parks_ever_hit": parks_hit,
         "share_parks_ever_hit_pct": round(parks_hit / parks_total * 100, 2),
         "rows_total": rows_total,
+        "park_quarters": park_quarters,
         "zero_rows": zero_rows,
         "share_zero_rows_pct": round(zero_rows / rows_total * 100, 2),
         "zero_share_mean_pct": round(float(zero_share.mean()), 2),
         "quarters_total": int(len(totals)),
         "first_quarter": str(totals["quarter_label"].iloc[0]),
         "last_quarter": str(totals["quarter_label"].iloc[-1]),
-        "missing_quarter": "2020Q1",
+        "missing_quarter": missing[0] if missing else None,
+        "missing_quarters": missing,
+        "crime_types": sorted(df["crime_type"].unique()),
+        "missing_column_quarters": sorted(
+            missing_columns["quarter_label"].unique()
+        ),
+        "missing_column_types": sorted(missing_columns["crime_type"].unique()),
+        "late_parks": late_parks(df),
+        "source_anomalies": source_anomaly_entries(),
+        "null_count_rule": null_rule(df),
+        "null_count_rows": int(df["count"].isna().sum()),
         "rate_per_100_acres_formula":
-            "sum(count) / sum(size_acres of distinct parks) * 100",
-        "source_anomaly":
-            "q4-2025 FLUSHING MEADOWS CORONA PARK: TOTAL recorded 17 vs "
-            "sum 18, row excluded from the warehouse "
-            "(outputs/tables/source_anomalies.csv)",
+            "sum(count of parks with acreage) / sum(latest size_acres of "
+            "those parks) * 100; excluded crime volume reported",
+        "source_anomaly": " ; ".join(
+            f"{entry['quarter']} {entry['park']}: TOTAL recorded "
+            f"{entry['total_recorded']} vs sum of components "
+            f"{entry['sum_computed']}; components are kept and the row is "
+            "excluded from TOTAL-based checks only"
+            for entry in source_anomaly_entries()
+        ) or "no TOTAL mismatch recorded",
+        "missing_column_anomaly": missing_column_anomaly(df),
     }
+    stats["source_anomaly"] += (
+        " (outputs/tables/source_anomalies.csv, "
+        "outputs/tables/source_anomaly_sensitivity.csv)"
+    )
     return stats
 
 

@@ -31,7 +31,7 @@ ce script se lit à côté.
 
 Bonjour. Nous présentons le sujet 2 du module Open Data : la criminalité dans
 les parcs de New York. Le jeu de données couvre 2014Q4 à 2026Q2, soit
-12 526 crimes majeurs déclarés par le NYPD, parc par parc et trimestre par
+12 544 crimes majeurs déclarés par le NYPD, parc par parc et trimestre par
 trimestre. Nous verrons ce que ces chiffres disent, et surtout ce qu'ils ne
 disent pas.
 
@@ -52,7 +52,7 @@ même pipeline, sans enquête terrain.
 Deux sources ouvertes. Côté NYPD, un classeur Excel par trimestre publie les
 sept crimes majeurs de chaque parc : 46 classeurs, de 2014Q4 à 2026Q2. Côté
 ville de New York, le référentiel Parks Properties fournit la surface en acres
-et les coordonnées. Au total : 12 526 crimes, 1 155 parcs dont 792 touchés au
+et les coordonnées. Au total : 12 544 crimes, 1 155 parcs dont 792 touchés au
 moins une fois, et 1 009 parcs géolocalisés. Trois trous assumés : 2020Q1 est
 absent de la source, 2026Q3 et 2026Q4 ne sont pas encore publiés (404), et
 Central Park n'entre dans les classeurs qu'en 2025Q1.
@@ -75,14 +75,17 @@ rejoue toute la chaîne.
 
 ## 5. Pipeline qualité (1:15)
 
-Quatre pièges, traités explicitement. Premier : la couverture bouge. Central
-Park n'apparaît qu'en 2025Q1, donc la hausse 2025 est de +3,93 % avec lui, mais
-de −1,06 % hors Central Park, soit 1 031 crimes contre 1 042. Deuxième : 2020Q1
+Cinq pièges, traités explicitement. Premier : la couverture bouge. Central
+Park n'apparaît qu'en 2025Q1, donc la hausse 2025 est de +5,66 % avec lui, mais
+de +0,67 % hors Central Park, soit 1 049 crimes contre 1 042. Deuxième : 2020Q1
 manque et il est interpolé pour le modèle, jamais traité comme un zéro.
-Troisième : dans le classeur 2025Q4, Flushing Meadows affiche un TOTAL de 17
-contre 18 pour la somme ; la ligne est exclue et journalisée. Quatrième : la
-géolocalisation couvre 87,4 % des parcs, 90,5 % pondéré par volume, avec deux
-rapprochements flous assumés. Aucun de ces choix n'est silencieux.
+Troisième : les classeurs q1-2025 et q2-2024 n'ont pas de colonne MURDER ; la
+cellule est NULL et flaggée, jamais un zéro. Quatrième : dans le classeur
+2025Q4, Flushing Meadows affiche un TOTAL de 17 contre 18 pour la somme ; les
+sept composantes sont conservées et flaggées, la ligne n'est exclue que des
+contrôles TOTAL. Cinquième : la géolocalisation couvre 87,4 % des parcs, 90,5 %
+pondéré par volume, avec deux rapprochements flous assumés. Aucun de ces choix
+n'est silencieux.
 
 **Transition :** avec un entrepôt propre, regardons la trajectoire.
 
@@ -90,9 +93,9 @@ rapprochements flous assumés. Aucun de ces choix n'est silencieux.
 
 La série citywide culmine en 2018Q3 avec 545 crimes sur le trimestre ; depuis
 2022 le niveau est plus bas et plus stable. Le total de la période est de
-12 526 crimes. La marche visible en 2025Q1 n'est pas une hausse réelle : c'est
-l'ajout de Central Park à la source. À périmètre constant, 2025 recule de
-1,06 %. C'est le genre de conclusion qu'un graphique seul ne donne pas.
+12 544 crimes. La marche visible en 2025Q1 n'est pas une hausse réelle : c'est
+l'ajout de Central Park à la source. À périmètre constant, 2025 ne progresse
+que de 0,67 %. C'est le genre de conclusion qu'un graphique seul ne donne pas.
 
 **Transition :** la série ne bouge pas seulement par année, elle bouge aussi
 dans l'année.
@@ -130,8 +133,10 @@ grand espace : il faut normaliser.
 
 ## 10. Taux par acre (0:45)
 
-Rapporté à la surface, le classement change. Manhattan concentre 146,7 crimes
-pour 100 acres, contre 2,1 à Staten Island, un rapport de 70. Attention à la
+Rapporté à la surface, le classement change. Manhattan concentre 205,4 crimes
+pour 100 acres hors Central Park, contre 2,1 à Staten Island, un rapport de 98.
+Le taux ne retient que les parcs dotés d'une surface, et Central Park est exclu
+du chiffre de tête car sa série ne commence qu'en 2025Q1. Attention à la
 lecture : le taux mesure l'exposition du parc, pas le risque par visiteur, car
 nous n'avons aucune donnée de fréquentation.
 
@@ -148,15 +153,16 @@ poignée de sites et sur quelques trimestres.
 
 ## 12. Prévision et backtest (1:30)
 
-Nous testons trois approches sur les huit derniers trimestres connus : la règle
-`seasonal_naive`, Holt-Winters et SARIMAX. Le SARIMAX atteint une MAE de
-19,98 contre 22,75 pour `seasonal_naive` (règle naïve récursive), soit 12,17 %
-de mieux ; face à `baseline_mae_seasonal_rule` (règle saisonnière non
-récursive, 22,50), l'avantage se réduit. Le MAPE reste à 9,62 %. La prévision
-2026Q3 est de 378 crimes, intervalle de 258 à 498 ; le cycle saisonnier est
-reproduit sur 2026Q3–2027Q2. Deux réserves : le modèle est choisi sur la même
-fenêtre qu'il rapporte, donc son avantage est optimiste ; et la prévision est
-gonflée par l'ajout de Central Park.
+Nous testons cinq approches sur trois origines glissantes de quatre trimestres :
+la règle `seasonal_naive`, Holt-Winters, un GLM de Poisson, le SARIMAX (avec
+une dummy de couverture depuis 2025Q1) et le SARIMAX en logarithme. La naïve
+saisonnière reste la meilleure en moyenne : MAE de 30,17 ± 7,68 ; le SARIMAX
+suit à 30,88 et le test de Diebold-Mariano ne les sépare pas (p = 0,90). La
+règle saisonnière à un pas donne 24,75, et le MAPE 12,94 %. La prévision
+réconciliée 2026Q3 est de 424 crimes, intervalle de 286 à 568, soit +2,9 en
+moyenne par rapport à la prévision citywide brute. Deux réserves : la
+tolérance de 1 % retient le modèle le plus simple ; et la prévision reste
+gonflée par l'ajout de Central Park (MAE 26,75 à périmètre constant, sans lui).
 
 **Transition :** la même mécanique, arrondissement par arrondissement.
 
@@ -207,10 +213,11 @@ arrondissement.
 ## 17. Conclusion (0:45)
 
 Le risque est concentré : 792 parcs touchés sur 1 155, et 89,83 % des parcs
-vides un trimestre donné. Il suit l'usage du sol : 146,7 crimes pour 100 acres
-à Manhattan contre 2,1 à Staten Island. Il reste prévisible à court terme :
-MAE de 19,98 contre 22,75 pour la règle naïve. La réserve : toute prévision
-décrit une couverture, pas une explosion.
+vides un trimestre donné. Il suit l'usage du sol : 205,4 crimes pour 100 acres
+à Manhattan hors Central Park, contre 2,1 à Staten Island. Il reste prévisible
+à court terme : MAE de 30,17 ± 7,68 pour la naïve saisonnière retenue, sans
+gain significatif du SARIMAX (Diebold-Mariano p = 0,90). La réserve : toute
+prévision décrit une couverture, pas une explosion.
 
 **Transition :** nous sommes prêts pour vos questions.
 

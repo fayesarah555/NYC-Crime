@@ -1,16 +1,38 @@
 {
+  "ci_alpha": 0.05,
+  "interval_clipped_rows": 2,
+  "interval_note": {
+    "en": "The lower bound of the 95 % interval is clipped at 0 because a crime count cannot be negative. On rows flagged clipped, the interval is therefore one-sided/asymmetric and the true lower bound is not shown.",
+    "fr": "La borne basse de l'intervalle à 95 % est ramenée à 0 car un nombre de crimes ne peut pas être négatif. Sur les lignes marquées « clipped », l'intervalle est donc unilatéral/asymétrique et sa vraie borne basse n'est pas représentée."
+  },
+  "tie_tolerance_pct": 1.0,
   "citywide": {
-    "selected_model": "sarimax",
-    "selected_mae": 19.9818,
-    "selected_rmse": 26.6237,
-    "selected_mape": 9.62,
-    "baseline_mae": 22.75,
-    "baseline_mae_seasonal_rule": 22.5,
-    "baseline_wins": false,
-    "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
-    "improvement_pct": 12.17,
-    "backtest_quarters": 8,
+    "selected_model": "seasonal_naive",
+    "selected_mae": 30.1667,
+    "selected_mae_sd": 7.6848,
+    "selected_rmse": 33.5112,
+    "selected_mape": 12.94,
+    "baseline_mae": 30.1667,
+    "baseline_mae_sd": 7.6848,
+    "baseline_mae_seasonal_rule": 24.75,
+    "baseline_wins": true,
+    "dm_p_vs_naive": null,
+    "best_challenger": {
+      "model": "sarimax",
+      "mae": 30.8782,
+      "mae_sd": 6.2841,
+      "dm_p": 0.9017
+    },
+    "interval_coverage_95": 1.0,
+    "tie_tolerance_pct": 1.0,
+    "selection_caveat": "Model chosen on the mean MAE over 3 rolling 4-quarter origins with a 1 % tie tolerance toward the simpler model; the reported MAE is the mean of those same forecasts, so its advantage remains optimistic, while the comparison with the recursive seasonal-naive baseline is unaffected.",
+    "improvement_pct": 0.0,
+    "backtest_quarters": 12,
     "backtest_window": [
+      "2023Q3",
+      "2023Q4",
+      "2024Q1",
+      "2024Q2",
       "2024Q3",
       "2024Q4",
       "2025Q1",
@@ -20,69 +42,500 @@
       "2026Q1",
       "2026Q2"
     ],
+    "backtest_origins": [
+      {
+        "train_end": "2023Q2",
+        "test_window": [
+          "2023Q3",
+          "2023Q4",
+          "2024Q1",
+          "2024Q2"
+        ],
+        "metrics": [
+          {
+            "model": "seasonal_naive",
+            "mae": 41.0,
+            "rmse": 43.5373
+          },
+          {
+            "model": "holt_winters",
+            "mae": 25.219,
+            "rmse": 41.0225
+          },
+          {
+            "model": "glm_poisson",
+            "mae": 35.2917,
+            "rmse": 39.6457
+          },
+          {
+            "model": "sarimax",
+            "mae": 26.2058,
+            "rmse": 42.6548
+          },
+          {
+            "model": "sarimax_log",
+            "mae": 38.1071,
+            "rmse": 57.2504
+          }
+        ]
+      },
+      {
+        "train_end": "2024Q2",
+        "test_window": [
+          "2024Q3",
+          "2024Q4",
+          "2025Q1",
+          "2025Q2"
+        ],
+        "metrics": [
+          {
+            "model": "seasonal_naive",
+            "mae": 25.5,
+            "rmse": 26.9165
+          },
+          {
+            "model": "holt_winters",
+            "mae": 39.0732,
+            "rmse": 55.4142
+          },
+          {
+            "model": "glm_poisson",
+            "mae": 35.8333,
+            "rmse": 48.2309
+          },
+          {
+            "model": "sarimax",
+            "mae": 39.7612,
+            "rmse": 56.4712
+          },
+          {
+            "model": "sarimax_log",
+            "mae": 53.1088,
+            "rmse": 77.9797
+          }
+        ]
+      },
+      {
+        "train_end": "2025Q2",
+        "test_window": [
+          "2025Q3",
+          "2025Q4",
+          "2026Q1",
+          "2026Q2"
+        ],
+        "metrics": [
+          {
+            "model": "seasonal_naive",
+            "mae": 24.0,
+            "rmse": 27.3679
+          },
+          {
+            "model": "holt_winters",
+            "mae": 33.4486,
+            "rmse": 37.6262
+          },
+          {
+            "model": "glm_poisson",
+            "mae": 35.118,
+            "rmse": 51.9703
+          },
+          {
+            "model": "sarimax",
+            "mae": 26.6675,
+            "rmse": 29.8369
+          },
+          {
+            "model": "sarimax_log",
+            "mae": 34.309,
+            "rmse": 53.3592
+          }
+        ]
+      }
+    ],
     "backtest_metrics": {
       "seasonal_naive": {
-        "mae": 22.75,
-        "rmse": 25.5245,
-        "mape": 12.44
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "rmse": 33.5112,
+        "mape": 12.94,
+        "coverage_95": 1.0,
+        "dm_p": null
       },
       "holt_winters": {
-        "mae": 36.175,
-        "rmse": 48.1754,
-        "mape": 14.28
+        "mae": 32.5803,
+        "mae_sd": 5.6892,
+        "rmse": 45.348,
+        "mape": 11.46,
+        "coverage_95": 0.9167,
+        "dm_p": 0.6758
+      },
+      "glm_poisson": {
+        "mae": 35.4143,
+        "mae_sd": 0.3046,
+        "rmse": 46.9003,
+        "mape": 13.04,
+        "coverage_95": 0.6667,
+        "dm_p": 0.287
       },
       "sarimax": {
-        "mae": 19.9818,
-        "rmse": 26.6237,
-        "mape": 9.62
+        "mae": 30.8782,
+        "mae_sd": 6.2841,
+        "rmse": 44.3421,
+        "mape": 11.43,
+        "coverage_95": 1.0,
+        "dm_p": 0.9017
+      },
+      "sarimax_log": {
+        "mae": 41.8416,
+        "mae_sd": 8.1166,
+        "rmse": 63.7852,
+        "mape": 14.39,
+        "coverage_95": 1.0,
+        "dm_p": 0.1135
       }
     },
     "model_failures": {},
+    "interval_clipped_rows": 0,
     "forecast": [
       {
         "quarter_label": "2026Q3",
-        "point": 378.46,
-        "lower": 258.42,
-        "upper": 498.49
+        "point": 424.36,
+        "lower": 285.63,
+        "upper": 567.51,
+        "clipless_lower": 285.63,
+        "clipped": false
       },
       {
         "quarter_label": "2026Q4",
-        "point": 231.41,
-        "lower": 110.58,
-        "upper": 352.25
+        "point": 237.16,
+        "lower": 112.76,
+        "upper": 369.13,
+        "clipless_lower": 112.76,
+        "clipped": false
       },
       {
         "quarter_label": "2027Q1",
-        "point": 107.94,
-        "lower": -12.93,
-        "upper": 228.81
+        "point": 112.36,
+        "lower": 19.57,
+        "upper": 239.59,
+        "clipless_lower": 19.57,
+        "clipped": false
       },
       {
         "quarter_label": "2027Q2",
-        "point": 334.97,
-        "lower": 214.09,
-        "upper": 455.84
+        "point": 328.8,
+        "lower": 196.95,
+        "upper": 458.78,
+        "clipless_lower": 196.95,
+        "clipped": false
       }
     ],
     "interpolated_quarters": [
       "2020Q1"
     ],
     "n_quarters": 47,
-    "forecast_footnote": "Prévision gonflée par l'ajout de Central Park à la source en 2025Q1 ; voir coverage_gaps.csv."
+    "forecast_footnote": "Note : Central Park absent de la source avant 2025Q1 ; Flushing Meadows Corona Park 2025Q4 flaggé total_mismatch (composantes conservées) ; MURDER NULL en 2024Q2, 2025Q1 ; 2020Q1 absent (NaN pour SARIMAX, interpolation saisonnière sinon). Couverture : dummy post-2025Q1 (parcs ajoutés à la source) dans le SARIMAX ; l'artefact de sensibilité exclut Central Park.",
+    "diagnostics": {
+      "order": [
+        0,
+        1,
+        1
+      ],
+      "seasonal_order": [
+        0,
+        1,
+        1,
+        4
+      ],
+      "aicc": 458.3131,
+      "ljung_box_p": 0.4818,
+      "adf_p": 0.0561,
+      "kpss_p": 0.1,
+      "params": [
+        {
+          "name": "post_coverage",
+          "value": 22.488
+        },
+        {
+          "name": "ma.L1",
+          "value": -0.6448
+        },
+        {
+          "name": "ma.S.L4",
+          "value": -0.6779
+        },
+        {
+          "name": "sigma2",
+          "value": 3067.8109
+        }
+      ],
+      "aicc_grid_top": [
+        {
+          "order": [
+            0,
+            1,
+            1
+          ],
+          "seasonal_order": [
+            0,
+            1,
+            1,
+            4
+          ],
+          "aicc": 458.3131
+        },
+        {
+          "order": [
+            0,
+            1,
+            1
+          ],
+          "seasonal_order": [
+            1,
+            1,
+            0,
+            4
+          ],
+          "aicc": 459.7223
+        },
+        {
+          "order": [
+            1,
+            1,
+            1
+          ],
+          "seasonal_order": [
+            0,
+            1,
+            1,
+            4
+          ],
+          "aicc": 460.7988
+        },
+        {
+          "order": [
+            0,
+            1,
+            1
+          ],
+          "seasonal_order": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "aicc": 460.8128
+        },
+        {
+          "order": [
+            0,
+            1,
+            2
+          ],
+          "seasonal_order": [
+            0,
+            1,
+            1,
+            4
+          ],
+          "aicc": 460.8139
+        }
+      ],
+      "grid_failures": 0,
+      "scope": "CITYWIDE"
+    },
+    "coverage_handling": {
+      "method": "SARIMAX step dummy post_coverage = 1 from the quarter new parks enter the source; consistent-perimeter sensitivity excludes Central Park.",
+      "coverage_from": "2025Q1",
+      "n_late_parks": 1,
+      "consistent_perimeter": {
+        "excluded_parks": [
+          "CENTRAL PARK"
+        ],
+        "selected_model": "seasonal_naive",
+        "selected_mae": 26.75,
+        "selected_mae_sd": 11.5344,
+        "points": [
+          {
+            "quarter_label": "2026Q3",
+            "point": 365.0,
+            "lower": 241.97,
+            "upper": 488.03
+          },
+          {
+            "quarter_label": "2026Q4",
+            "point": 251.0,
+            "lower": 127.97,
+            "upper": 374.03
+          },
+          {
+            "quarter_label": "2027Q1",
+            "point": 94.0,
+            "lower": 0.0,
+            "upper": 217.03
+          },
+          {
+            "quarter_label": "2027Q2",
+            "point": 326.0,
+            "lower": 202.97,
+            "upper": 449.03
+          }
+        ]
+      }
+    },
+    "reconciliation": {
+      "method": "bottom-up: modelled borough forecasts + seasonal-naive residual (city minus modelled boroughs) for skipped boroughs",
+      "base_forecast": [
+        {
+          "quarter": "2026Q3",
+          "point": 388.0
+        },
+        {
+          "quarter": "2026Q4",
+          "point": 262.0
+        },
+        {
+          "quarter": "2027Q1",
+          "point": 101.0
+        },
+        {
+          "quarter": "2027Q2",
+          "point": 340.0
+        }
+      ],
+      "delta_by_quarter": [
+        {
+          "quarter": "2026Q3",
+          "delta": 36.36
+        },
+        {
+          "quarter": "2026Q4",
+          "delta": -24.84
+        },
+        {
+          "quarter": "2027Q1",
+          "delta": 11.36
+        },
+        {
+          "quarter": "2027Q2",
+          "delta": -11.2
+        }
+      ],
+      "delta_mean": 2.92,
+      "residual_mean": 5.83,
+      "residual_sd": 4.4
+    },
+    "interpolation_sensitivity": [
+      {
+        "interpolation": "linear",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2026Q3",
+        "point": 388.0,
+        "lower": 256.37,
+        "upper": 519.63
+      },
+      {
+        "interpolation": "linear",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2026Q4",
+        "point": 262.0,
+        "lower": 130.37,
+        "upper": 393.63
+      },
+      {
+        "interpolation": "linear",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2027Q1",
+        "point": 101.0,
+        "lower": 0.0,
+        "upper": 232.63
+      },
+      {
+        "interpolation": "linear",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2027Q2",
+        "point": 340.0,
+        "lower": 208.37,
+        "upper": 471.63
+      },
+      {
+        "interpolation": "seasonal",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2026Q3",
+        "point": 388.0,
+        "lower": 264.69,
+        "upper": 511.31
+      },
+      {
+        "interpolation": "seasonal",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2026Q4",
+        "point": 262.0,
+        "lower": 138.69,
+        "upper": 385.31
+      },
+      {
+        "interpolation": "seasonal",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2027Q1",
+        "point": 101.0,
+        "lower": 0.0,
+        "upper": 224.31
+      },
+      {
+        "interpolation": "seasonal",
+        "model": "seasonal_naive",
+        "mae": 30.1667,
+        "mae_sd": 7.6848,
+        "quarter_label": "2027Q2",
+        "point": 340.0,
+        "lower": 216.69,
+        "upper": 463.31
+      }
+    ]
   },
   "boroughs": {
     "BRONX": {
-      "selected_model": "holt_winters",
-      "selected_mae": 12.7244,
-      "selected_rmse": 14.8311,
-      "selected_mape": 26.48,
-      "baseline_mae": 14.25,
+      "selected_model": "seasonal_naive",
+      "selected_mae": 11.6667,
+      "selected_mae_sd": 2.3214,
+      "selected_rmse": 13.6565,
+      "selected_mape": 24.74,
+      "baseline_mae": 11.6667,
+      "baseline_mae_sd": 2.3214,
       "baseline_mae_seasonal_rule": 10.5,
-      "baseline_wins": false,
-      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
-      "improvement_pct": 10.71,
-      "backtest_quarters": 8,
+      "baseline_wins": true,
+      "dm_p_vs_naive": null,
+      "best_challenger": {
+        "model": "sarimax_log",
+        "mae": 12.5438,
+        "mae_sd": 1.6777,
+        "dm_p": 0.516
+      },
+      "interval_coverage_95": 1.0,
+      "tie_tolerance_pct": 1.0,
+      "selection_caveat": "Model chosen on the mean MAE over 3 rolling 4-quarter origins with a 1 % tie tolerance toward the simpler model; the reported MAE is the mean of those same forecasts, so its advantage remains optimistic, while the comparison with the recursive seasonal-naive baseline is unaffected.",
+      "improvement_pct": 0.0,
+      "backtest_quarters": 12,
       "backtest_window": [
+        "2023Q3",
+        "2023Q4",
+        "2024Q1",
+        "2024Q2",
         "2024Q3",
         "2024Q4",
         "2025Q1",
@@ -92,63 +545,222 @@
         "2026Q1",
         "2026Q2"
       ],
+      "backtest_origins": [
+        {
+          "train_end": "2023Q2",
+          "test_window": [
+            "2023Q3",
+            "2023Q4",
+            "2024Q1",
+            "2024Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 14.0,
+              "rmse": 16.2942
+            },
+            {
+              "model": "holt_winters",
+              "mae": 17.9481,
+              "rmse": 20.2502
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 16.3819,
+              "rmse": 19.4224
+            },
+            {
+              "model": "sarimax",
+              "mae": 17.8758,
+              "rmse": 20.1669
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 14.7651,
+              "rmse": 15.985
+            }
+          ]
+        },
+        {
+          "train_end": "2024Q2",
+          "test_window": [
+            "2024Q3",
+            "2024Q4",
+            "2025Q1",
+            "2025Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 12.5,
+              "rmse": 14.3875
+            },
+            {
+              "model": "holt_winters",
+              "mae": 16.6104,
+              "rmse": 18.0647
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 10.6,
+              "rmse": 11.9455
+            },
+            {
+              "model": "sarimax",
+              "mae": 12.7664,
+              "rmse": 16.3519
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 12.1555,
+              "rmse": 13.2776
+            }
+          ]
+        },
+        {
+          "train_end": "2025Q2",
+          "test_window": [
+            "2025Q3",
+            "2025Q4",
+            "2026Q1",
+            "2026Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 8.5,
+              "rmse": 9.3274
+            },
+            {
+              "model": "holt_winters",
+              "mae": 5.5867,
+              "rmse": 7.7551
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 12.772,
+              "rmse": 14.7595
+            },
+            {
+              "model": "sarimax",
+              "mae": 9.3853,
+              "rmse": 11.0189
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 10.7109,
+              "rmse": 12.9306
+            }
+          ]
+        }
+      ],
       "backtest_metrics": {
         "seasonal_naive": {
-          "mae": 14.25,
-          "rmse": 15.346,
-          "mape": 31.18
+          "mae": 11.6667,
+          "mae_sd": 2.3214,
+          "rmse": 13.6565,
+          "mape": 24.74,
+          "coverage_95": 1.0,
+          "dm_p": null
         },
         "holt_winters": {
-          "mae": 12.7244,
-          "rmse": 14.8311,
-          "mape": 26.48
+          "mae": 13.3817,
+          "mae_sd": 5.5389,
+          "rmse": 16.2946,
+          "mape": 28.54,
+          "coverage_95": 0.75,
+          "dm_p": 0.5454
+        },
+        "glm_poisson": {
+          "mae": 13.2513,
+          "mae_sd": 2.3847,
+          "rmse": 15.6819,
+          "mape": 26.72,
+          "coverage_95": 0.8333,
+          "dm_p": 0.3191
         },
         "sarimax": {
-          "mae": 15.7338,
-          "rmse": 18.5803,
-          "mape": 28.53
+          "mae": 13.3425,
+          "mae_sd": 3.4901,
+          "rmse": 16.284,
+          "mape": 29.3,
+          "coverage_95": 0.75,
+          "dm_p": 0.3338
+        },
+        "sarimax_log": {
+          "mae": 12.5438,
+          "mae_sd": 1.6777,
+          "rmse": 14.1305,
+          "mape": 25.71,
+          "coverage_95": 0.9167,
+          "dm_p": 0.516
         }
       },
       "model_failures": {},
+      "interval_clipped_rows": 1,
       "forecast": [
         {
           "quarter_label": "2026Q3",
-          "point": 71.11,
-          "lower": 49.19,
-          "upper": 93.86
+          "point": 71.0,
+          "lower": 42.92,
+          "upper": 99.08,
+          "clipless_lower": 42.92,
+          "clipped": false
         },
         {
           "quarter_label": "2026Q4",
-          "point": 37.11,
-          "lower": 14.89,
-          "upper": 61.65
+          "point": 39.0,
+          "lower": 10.92,
+          "upper": 67.08,
+          "clipless_lower": 10.92,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q1",
-          "point": 19.57,
-          "lower": -3.19,
-          "upper": 42.84
+          "point": 23.0,
+          "lower": 0.0,
+          "upper": 51.08,
+          "clipless_lower": -5.08,
+          "clipped": true
         },
         {
           "quarter_label": "2027Q2",
-          "point": 52.78,
-          "lower": 28.66,
-          "upper": 76.04
+          "point": 66.0,
+          "lower": 37.92,
+          "upper": 94.08,
+          "clipless_lower": 37.92,
+          "clipped": false
         }
       ]
     },
     "BROOKLYN": {
-      "selected_model": "seasonal_naive",
-      "selected_mae": 12.25,
-      "selected_rmse": 15.0,
-      "selected_mape": 25.46,
-      "baseline_mae": 12.25,
+      "selected_model": "glm_poisson",
+      "selected_mae": 15.0941,
+      "selected_mae_sd": 4.0285,
+      "selected_rmse": 20.9813,
+      "selected_mape": 27.82,
+      "baseline_mae": 15.5833,
+      "baseline_mae_sd": 5.2454,
       "baseline_mae_seasonal_rule": 17.375,
-      "baseline_wins": true,
-      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
-      "improvement_pct": 0.0,
-      "backtest_quarters": 8,
+      "baseline_wins": false,
+      "dm_p_vs_naive": 0.9331,
+      "best_challenger": {
+        "model": "glm_poisson",
+        "mae": 15.0941,
+        "mae_sd": 4.0285,
+        "dm_p": 0.9331
+      },
+      "interval_coverage_95": 0.75,
+      "tie_tolerance_pct": 1.0,
+      "selection_caveat": "Model chosen on the mean MAE over 3 rolling 4-quarter origins with a 1 % tie tolerance toward the simpler model; the reported MAE is the mean of those same forecasts, so its advantage remains optimistic, while the comparison with the recursive seasonal-naive baseline is unaffected.",
+      "improvement_pct": 3.14,
+      "backtest_quarters": 12,
       "backtest_window": [
+        "2023Q3",
+        "2023Q4",
+        "2024Q1",
+        "2024Q2",
         "2024Q3",
         "2024Q4",
         "2025Q1",
@@ -158,63 +770,222 @@
         "2026Q1",
         "2026Q2"
       ],
+      "backtest_origins": [
+        {
+          "train_end": "2023Q2",
+          "test_window": [
+            "2023Q3",
+            "2023Q4",
+            "2024Q1",
+            "2024Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 12.0,
+              "rmse": 15.7639
+            },
+            {
+              "model": "holt_winters",
+              "mae": 14.8012,
+              "rmse": 19.2626
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 11.7882,
+              "rmse": 17.3893
+            },
+            {
+              "model": "sarimax",
+              "mae": 15.3663,
+              "rmse": 19.7997
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 17.896,
+              "rmse": 24.0729
+            }
+          ]
+        },
+        {
+          "train_end": "2024Q2",
+          "test_window": [
+            "2024Q3",
+            "2024Q4",
+            "2025Q1",
+            "2025Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 11.75,
+              "rmse": 15.8509
+            },
+            {
+              "model": "holt_winters",
+              "mae": 17.5778,
+              "rmse": 24.2594
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 20.7653,
+              "rmse": 28.1808
+            },
+            {
+              "model": "sarimax",
+              "mae": 17.754,
+              "rmse": 24.4827
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 17.5713,
+              "rmse": 23.4065
+            }
+          ]
+        },
+        {
+          "train_end": "2025Q2",
+          "test_window": [
+            "2025Q3",
+            "2025Q4",
+            "2026Q1",
+            "2026Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 23.0,
+              "rmse": 27.0093
+            },
+            {
+              "model": "holt_winters",
+              "mae": 17.3038,
+              "rmse": 19.7423
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 12.7287,
+              "rmse": 14.9701
+            },
+            {
+              "model": "sarimax",
+              "mae": 14.4691,
+              "rmse": 17.6246
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 14.2713,
+              "rmse": 16.3083
+            }
+          ]
+        }
+      ],
       "backtest_metrics": {
         "seasonal_naive": {
-          "mae": 12.25,
-          "rmse": 15.0,
-          "mape": 25.46
+          "mae": 15.5833,
+          "mae_sd": 5.2454,
+          "rmse": 20.2423,
+          "mape": 27.81,
+          "coverage_95": 1.0,
+          "dm_p": null
         },
         "holt_winters": {
-          "mae": 16.0917,
-          "rmse": 20.4667,
-          "mape": 28.31
+          "mae": 16.5609,
+          "mae_sd": 1.2493,
+          "rmse": 21.2079,
+          "mape": 30.89,
+          "coverage_95": 0.8333,
+          "dm_p": 0.836
+        },
+        "glm_poisson": {
+          "mae": 15.0941,
+          "mae_sd": 4.0285,
+          "rmse": 20.9813,
+          "mape": 27.82,
+          "coverage_95": 0.75,
+          "dm_p": 0.9331
         },
         "sarimax": {
-          "mae": 15.4268,
-          "rmse": 18.1065,
-          "mape": 30.7
+          "mae": 15.8631,
+          "mae_sd": 1.3863,
+          "rmse": 20.8331,
+          "mape": 29.77,
+          "coverage_95": 0.8333,
+          "dm_p": 0.9603
+        },
+        "sarimax_log": {
+          "mae": 16.5795,
+          "mae_sd": 1.6375,
+          "rmse": 21.5509,
+          "mape": 28.81,
+          "coverage_95": 0.9167,
+          "dm_p": 0.8617
         }
       },
       "model_failures": {},
+      "interval_clipped_rows": 0,
       "forecast": [
         {
           "quarter_label": "2026Q3",
-          "point": 107.0,
-          "lower": 60.66,
-          "upper": 153.34
+          "point": 124.73,
+          "lower": 98.95,
+          "upper": 153.02,
+          "clipless_lower": 98.95,
+          "clipped": false
         },
         {
           "quarter_label": "2026Q4",
-          "point": 69.0,
-          "lower": 22.66,
-          "upper": 115.34
+          "point": 55.05,
+          "lower": 40.98,
+          "upper": 70.0,
+          "clipless_lower": 40.98,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q1",
-          "point": 25.0,
-          "lower": -21.34,
-          "upper": 71.34
+          "point": 25.42,
+          "lower": 16.0,
+          "upper": 36.0,
+          "clipless_lower": 16.0,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q2",
-          "point": 96.0,
-          "lower": 49.66,
-          "upper": 142.34
+          "point": 82.69,
+          "lower": 64.0,
+          "upper": 101.02,
+          "clipless_lower": 64.0,
+          "clipped": false
         }
       ]
     },
     "MANHATTAN": {
-      "selected_model": "sarimax",
-      "selected_mae": 10.6136,
-      "selected_rmse": 12.3791,
-      "selected_mape": 13.34,
-      "baseline_mae": 10.625,
+      "selected_model": "holt_winters",
+      "selected_mae": 10.3471,
+      "selected_mae_sd": 0.9045,
+      "selected_rmse": 13.0171,
+      "selected_mape": 11.47,
+      "baseline_mae": 12.6667,
+      "baseline_mae_sd": 1.3894,
       "baseline_mae_seasonal_rule": 12.0,
       "baseline_wins": false,
-      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
-      "improvement_pct": 0.11,
-      "backtest_quarters": 8,
+      "dm_p_vs_naive": 0.0927,
+      "best_challenger": {
+        "model": "holt_winters",
+        "mae": 10.3471,
+        "mae_sd": 0.9045,
+        "dm_p": 0.0927
+      },
+      "interval_coverage_95": 1.0,
+      "tie_tolerance_pct": 1.0,
+      "selection_caveat": "Model chosen on the mean MAE over 3 rolling 4-quarter origins with a 1 % tie tolerance toward the simpler model; the reported MAE is the mean of those same forecasts, so its advantage remains optimistic, while the comparison with the recursive seasonal-naive baseline is unaffected.",
+      "improvement_pct": 18.31,
+      "backtest_quarters": 12,
       "backtest_window": [
+        "2023Q3",
+        "2023Q4",
+        "2024Q1",
+        "2024Q2",
         "2024Q3",
         "2024Q4",
         "2025Q1",
@@ -224,63 +995,222 @@
         "2026Q1",
         "2026Q2"
       ],
+      "backtest_origins": [
+        {
+          "train_end": "2023Q2",
+          "test_window": [
+            "2023Q3",
+            "2023Q4",
+            "2024Q1",
+            "2024Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 14.0,
+              "rmse": 15.248
+            },
+            {
+              "model": "holt_winters",
+              "mae": 9.2744,
+              "rmse": 10.6332
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 9.5208,
+              "rmse": 12.8419
+            },
+            {
+              "model": "sarimax",
+              "mae": 10.5926,
+              "rmse": 11.8358
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 11.7564,
+              "rmse": 12.2917
+            }
+          ]
+        },
+        {
+          "train_end": "2024Q2",
+          "test_window": [
+            "2024Q3",
+            "2024Q4",
+            "2025Q1",
+            "2025Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 13.25,
+              "rmse": 13.8112
+            },
+            {
+              "model": "holt_winters",
+              "mae": 10.2801,
+              "rmse": 14.9077
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 13.0111,
+              "rmse": 14.1022
+            },
+            {
+              "model": "sarimax",
+              "mae": 10.9406,
+              "rmse": 13.2334
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 13.0921,
+              "rmse": 17.5812
+            }
+          ]
+        },
+        {
+          "train_end": "2025Q2",
+          "test_window": [
+            "2025Q3",
+            "2025Q4",
+            "2026Q1",
+            "2026Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 10.75,
+              "rmse": 12.48
+            },
+            {
+              "model": "holt_winters",
+              "mae": 11.4869,
+              "rmse": 13.1539
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 16.572,
+              "rmse": 22.1146
+            },
+            {
+              "model": "sarimax",
+              "mae": 10.7919,
+              "rmse": 12.0541
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 16.1015,
+              "rmse": 21.003
+            }
+          ]
+        }
+      ],
       "backtest_metrics": {
         "seasonal_naive": {
-          "mae": 10.625,
-          "rmse": 11.6458,
-          "mape": 13.07
+          "mae": 12.6667,
+          "mae_sd": 1.3894,
+          "rmse": 13.8924,
+          "mape": 15.85,
+          "coverage_95": 1.0,
+          "dm_p": null
         },
         "holt_winters": {
-          "mae": 11.6239,
-          "rmse": 15.5078,
-          "mape": 14.27
+          "mae": 10.3471,
+          "mae_sd": 0.9045,
+          "rmse": 13.0171,
+          "mape": 11.47,
+          "coverage_95": 1.0,
+          "dm_p": 0.0927
+        },
+        "glm_poisson": {
+          "mae": 13.0346,
+          "mae_sd": 2.8787,
+          "rmse": 16.8606,
+          "mape": 15.36,
+          "coverage_95": 0.75,
+          "dm_p": 0.917
         },
         "sarimax": {
-          "mae": 10.6136,
-          "rmse": 12.3791,
-          "mape": 13.34
+          "mae": 10.775,
+          "mae_sd": 0.1426,
+          "rmse": 12.3896,
+          "mape": 12.97,
+          "coverage_95": 1.0,
+          "dm_p": 0.0891
+        },
+        "sarimax_log": {
+          "mae": 13.65,
+          "mae_sd": 1.8172,
+          "rmse": 17.3331,
+          "mape": 15.39,
+          "coverage_95": 1.0,
+          "dm_p": 0.5832
         }
       },
       "model_failures": {},
+      "interval_clipped_rows": 0,
       "forecast": [
         {
           "quarter_label": "2026Q3",
-          "point": 132.18,
-          "lower": 83.79,
-          "upper": 180.57
+          "point": 150.63,
+          "lower": 113.19,
+          "upper": 189.98,
+          "clipless_lower": 113.19,
+          "clipped": false
         },
         {
           "quarter_label": "2026Q4",
-          "point": 100.15,
-          "lower": 51.45,
-          "upper": 148.84
+          "point": 91.11,
+          "lower": 56.29,
+          "upper": 132.62,
+          "clipless_lower": 56.29,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q1",
-          "point": 40.94,
-          "lower": -7.77,
-          "upper": 89.65
+          "point": 46.94,
+          "lower": 10.19,
+          "upper": 88.08,
+          "clipless_lower": 10.19,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q2",
-          "point": 105.15,
-          "lower": 56.44,
-          "upper": 153.86
+          "point": 105.11,
+          "lower": 67.46,
+          "upper": 141.25,
+          "clipless_lower": 67.46,
+          "clipped": false
         }
       ]
     },
     "QUEENS": {
-      "selected_model": "holt_winters",
-      "selected_mae": 13.5671,
-      "selected_rmse": 16.7046,
-      "selected_mape": 45.78,
-      "baseline_mae": 18.25,
-      "baseline_mae_seasonal_rule": 13.375,
-      "baseline_wins": false,
-      "selection_caveat": "Model chosen by MAE on the same 8 held-out quarters it reports, so its advantage is optimistic; the recursive seasonal-naive baseline comparison is unaffected.",
-      "improvement_pct": 25.66,
-      "backtest_quarters": 8,
+      "selected_model": "seasonal_naive",
+      "selected_mae": 9.3333,
+      "selected_mae_sd": 4.5476,
+      "selected_rmse": 12.6557,
+      "selected_mape": 23.51,
+      "baseline_mae": 9.3333,
+      "baseline_mae_sd": 4.5476,
+      "baseline_mae_seasonal_rule": 11.125,
+      "baseline_wins": true,
+      "dm_p_vs_naive": null,
+      "best_challenger": {
+        "model": "glm_poisson",
+        "mae": 9.2604,
+        "mae_sd": 5.5731,
+        "dm_p": 0.991
+      },
+      "interval_coverage_95": 1.0,
+      "tie_tolerance_pct": 1.0,
+      "selection_caveat": "Model chosen on the mean MAE over 3 rolling 4-quarter origins with a 1 % tie tolerance toward the simpler model; the reported MAE is the mean of those same forecasts, so its advantage remains optimistic, while the comparison with the recursive seasonal-naive baseline is unaffected.",
+      "improvement_pct": 0.0,
+      "backtest_quarters": 12,
       "backtest_window": [
+        "2023Q3",
+        "2023Q4",
+        "2024Q1",
+        "2024Q2",
         "2024Q3",
         "2024Q4",
         "2025Q1",
@@ -290,96 +1220,318 @@
         "2026Q1",
         "2026Q2"
       ],
+      "backtest_origins": [
+        {
+          "train_end": "2023Q2",
+          "test_window": [
+            "2023Q3",
+            "2023Q4",
+            "2024Q1",
+            "2024Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 5.75,
+              "rmse": 7.6974
+            },
+            {
+              "model": "holt_winters",
+              "mae": 14.2388,
+              "rmse": 18.5112
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 16.3785,
+              "rmse": 21.0935
+            },
+            {
+              "model": "sarimax",
+              "mae": 16.2851,
+              "rmse": 23.6095
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 21.9391,
+              "rmse": 25.1697
+            }
+          ]
+        },
+        {
+          "train_end": "2024Q2",
+          "test_window": [
+            "2024Q3",
+            "2024Q4",
+            "2025Q1",
+            "2025Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 15.75,
+              "rmse": 18.6078
+            },
+            {
+              "model": "holt_winters",
+              "mae": 8.2595,
+              "rmse": 8.7044
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 2.7708,
+              "rmse": 2.9548
+            },
+            {
+              "model": "sarimax",
+              "mae": 16.444,
+              "rmse": 16.8221
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 18.3212,
+              "rmse": 20.1667
+            }
+          ]
+        },
+        {
+          "train_end": "2025Q2",
+          "test_window": [
+            "2025Q3",
+            "2025Q4",
+            "2026Q1",
+            "2026Q2"
+          ],
+          "metrics": [
+            {
+              "model": "seasonal_naive",
+              "mae": 6.5,
+              "rmse": 8.6603
+            },
+            {
+              "model": "holt_winters",
+              "mae": 11.5817,
+              "rmse": 14.1808
+            },
+            {
+              "model": "glm_poisson",
+              "mae": 8.6318,
+              "rmse": 10.9468
+            },
+            {
+              "model": "sarimax",
+              "mae": 7.1749,
+              "rmse": 7.8457
+            },
+            {
+              "model": "sarimax_log",
+              "mae": 7.5026,
+              "rmse": 8.4494
+            }
+          ]
+        }
+      ],
       "backtest_metrics": {
         "seasonal_naive": {
-          "mae": 18.25,
-          "rmse": 19.906,
-          "mape": 56.17
+          "mae": 9.3333,
+          "mae_sd": 4.5476,
+          "rmse": 12.6557,
+          "mape": 23.51,
+          "coverage_95": 1.0,
+          "dm_p": null
         },
         "holt_winters": {
-          "mae": 13.5671,
-          "rmse": 16.7046,
-          "mape": 45.78
+          "mae": 11.36,
+          "mae_sd": 2.4461,
+          "rmse": 14.3704,
+          "mape": 27.25,
+          "coverage_95": 0.9167,
+          "dm_p": 0.671
+        },
+        "glm_poisson": {
+          "mae": 9.2604,
+          "mae_sd": 5.5731,
+          "rmse": 13.8263,
+          "mape": 17.82,
+          "coverage_95": 0.8333,
+          "dm_p": 0.991
         },
         "sarimax": {
-          "mae": 23.0569,
-          "rmse": 25.4451,
-          "mape": 67.77
+          "mae": 13.3014,
+          "mae_sd": 4.3325,
+          "rmse": 17.3392,
+          "mape": 32.48,
+          "coverage_95": 0.9167,
+          "dm_p": 0.4295
+        },
+        "sarimax_log": {
+          "mae": 15.921,
+          "mae_sd": 6.1332,
+          "rmse": 19.2493,
+          "mape": 33.48,
+          "coverage_95": 1.0,
+          "dm_p": 0.3916
         }
       },
       "model_failures": {},
+      "interval_clipped_rows": 1,
       "forecast": [
         {
           "quarter_label": "2026Q3",
-          "point": 91.04,
-          "lower": 59.9,
-          "upper": 123.35
+          "point": 71.0,
+          "lower": 32.19,
+          "upper": 109.81,
+          "clipless_lower": 32.19,
+          "clipped": false
         },
         {
           "quarter_label": "2026Q4",
-          "point": 47.5,
-          "lower": 15.94,
-          "upper": 82.36
+          "point": 45.0,
+          "lower": 6.19,
+          "upper": 83.81,
+          "clipless_lower": 6.19,
+          "clipped": false
         },
         {
           "quarter_label": "2027Q1",
-          "point": 23.96,
-          "lower": -8.38,
-          "upper": 57.0
+          "point": 15.0,
+          "lower": 0.0,
+          "upper": 53.81,
+          "clipless_lower": -23.81,
+          "clipped": true
         },
         {
           "quarter_label": "2027Q2",
-          "point": 65.58,
-          "lower": 31.32,
-          "upper": 98.62
+          "point": 71.0,
+          "lower": 32.19,
+          "upper": 109.81,
+          "clipless_lower": 32.19,
+          "clipped": false
         }
       ]
     }
   },
   "skipped_boroughs": {
-    "BROOKLYN/QUEENS": "trop peu de données : 115 crimes sur 47 trimestres (moyenne 2.5/trimestre, 37 trimestres non nuls) ; libellé hybride (5 parcs) sans série homogène",
-    "STATEN ISLAND": "trop peu de données : 155 crimes sur 47 trimestres (moyenne 3.3/trimestre, 43 trimestres non nuls)"
+    "BROOKLYN/QUEENS": "trop peu de données : 114 crimes sur 47 trimestres (moyenne 2.5/trimestre, 36 trimestres non nuls) ; libellé hybride (5 parcs dans la source, 4 avec au moins un crime) sans série homogène",
+    "STATEN ISLAND": "trop peu de données : 154 crimes sur 47 trimestres (moyenne 3.3/trimestre, 42 trimestres non nuls)"
   },
   "clustering": {
-    "n_parks": 337,
-    "min_crimes_ever": 5,
+    "n_parks": 103,
+    "min_crimes_ever": 20,
+    "shrinkage_pseudocount": 20.0,
     "features": [
-      "share_burglary",
-      "share_felony_assault",
-      "share_grand_larceny",
-      "share_grand_larceny_auto",
-      "share_murder",
-      "share_rape",
-      "share_robbery",
+      "clr_burglary",
+      "clr_felony_assault",
+      "clr_grand_larceny",
+      "clr_grand_larceny_auto",
+      "clr_murder",
+      "clr_rape",
+      "clr_robbery",
       "log_total",
       "log_acres"
     ],
-    "selected_k": 4,
-    "silhouette": 0.225,
+    "selected_k": 2,
+    "silhouette": 0.1795,
     "silhouette_by_k": {
-      "2": 0.2066,
-      "3": 0.2005,
-      "4": 0.225,
-      "5": 0.2233,
-      "6": 0.2165
+      "2": 0.1795,
+      "3": 0.1792,
+      "4": 0.1713,
+      "5": 0.1527,
+      "6": 0.1568
     },
     "cluster_sizes": {
-      "0": 83,
-      "1": 15,
-      "2": 81,
-      "3": 158
+      "0": 66,
+      "1": 37
     },
-    "cluster_top_types": {
-      "0": "grand_larceny",
-      "1": "robbery",
-      "2": "grand_larceny",
-      "3": "robbery"
+    "cluster_names": {
+      "0": "Vol qualifié dominant",
+      "1": "Vol de véhicule dominant"
     },
+    "stability": {
+      "subsamples": 20,
+      "fraction": 0.8,
+      "ari_mean": 0.5455,
+      "ari_sd": 0.3393
+    },
+    "comparison": {
+      "gmm_bic_by_k": {
+        "2": 2553.42,
+        "3": 2543.82,
+        "4": 2582.66,
+        "5": 2596.86,
+        "6": 2548.19
+      },
+      "gmm_best_k": 3,
+      "gmm_ari_vs_kmeans": 0.146,
+      "hdbscan_clusters": 2,
+      "hdbscan_noise_fraction": 0.4563,
+      "hdbscan_ari_vs_kmeans": 0.141
+    },
+    "pca_explained": [
+      0.2345,
+      0.2169
+    ],
+    "acres_missing": 0,
     "random_state": 42
+  },
+  "park_risk": {
+    "n_parks": 792,
+    "top": [
+      {
+        "park": "WASHINGTON SQUARE PARK",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 6677.61
+      },
+      {
+        "park": "UNION SQUARE PARK",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 3963.13
+      },
+      {
+        "park": "LUNA PARK",
+        "borough": "BROOKLYN",
+        "crimes_per_100_acres": 3579.55
+      },
+      {
+        "park": "BRYANT PARK",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 3415.6
+      },
+      {
+        "park": "SOPHIE IRENE LOEB",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 3278.69
+      },
+      {
+        "park": "SARA D. ROOSEVELT PARK",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 2802.55
+      },
+      {
+        "park": "MCCAFFREY PLAYGROUND",
+        "borough": "MANHATTAN",
+        "crimes_per_100_acres": 2752.29
+      },
+      {
+        "park": "WILLIAM F MOORE PARK",
+        "borough": "QUEENS",
+        "crimes_per_100_acres": 2608.7
+      },
+      {
+        "park": "MILESTONE PARK",
+        "borough": "BROOKLYN",
+        "crimes_per_100_acres": 2521.01
+      },
+      {
+        "park": "MOORE HOMESTEAD PLAYGROUND",
+        "borough": "QUEENS",
+        "crimes_per_100_acres": 2477.25
+      }
+    ]
   },
   "caveats": [
     "Central Park n'apparaît dans la source qu'à partir de 2025Q1 : la croissance citywide 2024Q4→2025Q1 est en partie un artefact de couverture (outputs/tables/coverage_gaps.csv).",
-    "La ligne Flushing Meadows 2025Q4 est absente (anomalie de parsing, 18 crimes) — output/tables/source_anomalies.csv.",
-    "2020Q1 est absent en amont : interpolé entre 2019Q4 et 2020Q2 pour la modélisation, jamais traité comme zéro."
+    "Flushing Meadows Corona Park 2025Q4 : TOTAL 17 vs somme 18 ; ses composantes sont conservées (total_mismatch=1) et la ligne n'est exclue que des contrôles TOTAL (outputs/tables/source_anomalies.csv).",
+    "Les classeurs 2024Q2, 2025Q1 n'ont pas de colonne MURDER : le compte est NULL, exclu des sommes, jamais imputé ni compté comme zéro.",
+    "2020Q1 est absent en amont : laissé NaN pour SARIMAX, interpolé saisonnièrement pour Holt-Winters et le GLM, jamais traité comme zéro."
   ]
 }

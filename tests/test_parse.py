@@ -1,6 +1,5 @@
 """Network-free: workbook parsing, period parsing and the TOTAL integrity gate."""
 
-import shutil
 import sys
 from datetime import date
 from pathlib import Path
@@ -22,7 +21,6 @@ from etl.parse import (  # noqa: E402
     write_anomalies,
 )
 
-RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 HEADER = [
     "PARK",
     "BOROUGH",
@@ -121,16 +119,21 @@ def test_melt_emits_one_row_per_crime_and_drops_footer(tmp_path):
     assert all(r["count"] == 0 for r in park_b)
 
 
-def test_total_mismatch_is_reported_not_parsed(tmp_path):
+def test_total_mismatch_keeps_components_and_flags_the_row(tmp_path):
     path = make_workbook(
         tmp_path / "nyc-park-crime-stats-q2-2020.xlsx",
         [["BAD PARK", "BRONX", "2.0", "ONE ACRE OR LARGER", 1, 1, 1, 1, 1, 1, 1, 999]],
     )
     result = parse_workbook(path)
 
-    assert result["records"] == []
+    # The seven components are kept; only TOTAL-based checks exclude the row.
+    assert len(result["records"]) == len(CRIME_TYPES)
+    assert {r["count"] for r in result["records"]} == {1}
+    assert {r["total_mismatch"] for r in result["records"]} == {1}
+    assert {r["count_missing"] for r in result["records"]} == {0}
     (violation,) = result["violations"]
-    assert violation["message"] == "BAD PARK: TOTAL 999 != sum of crimes 7"
+    assert violation["message"].startswith("BAD PARK: TOTAL 999 != sum of crimes 7")
+    assert violation["kind"] == "total_mismatch"
     assert violation["excel_row"] == 4
     assert violation["park"] == "BAD PARK"
     assert violation["borough"] == "BRONX"
@@ -139,6 +142,35 @@ def test_total_mismatch_is_reported_not_parsed(tmp_path):
         7,
         992,
     )
+
+
+def test_missing_crime_column_is_null_and_flagged(tmp_path):
+    header = [h for h in HEADER if h != "Murder"]
+    path = make_workbook(
+        tmp_path / "nyc-park-crime-stats-q2-2020.xlsx",
+        [["PARK A", "BROOKLYN", "1.5", "ONE ACRE OR LARGER", 2, 3, 4, 5, 6, 7, 27]],
+        header=header,
+    )
+    result = parse_workbook(path)
+
+    (violation,) = result["violations"]
+    assert violation["kind"] == "missing_column"
+    murder = [r for r in result["records"] if r["crime_type"] == "MURDER"]
+    assert len(murder) == 1
+    assert murder[0]["count"] is None
+    assert murder[0]["count_missing"] == 1
+    assert all(r["count_missing"] == 0 for r in result["records"] if r["crime_type"] != "MURDER")
+    # TOTAL is checked against the six components the workbook actually has.
+    assert {r["total_mismatch"] for r in result["records"]} == {0}
+
+
+def test_filename_quarter_must_match_the_parsed_period(tmp_path):
+    path = make_workbook(
+        tmp_path / "nyc-park-crime-stats-q3-2020.xlsx",  # period says Q2 2020
+        [["PARK A", "BROOKLYN", "1.5", "ONE ACRE OR LARGER", 1, 2, 3, 4, 5, 6, 7, 28]],
+    )
+    with pytest.raises(ValueError, match="filename quarter 2020Q3"):
+        parse_workbook(path)
 
 
 def test_allow_anomalies_writes_evidence_csv(tmp_path):
@@ -178,31 +210,23 @@ def test_allow_anomalies_writes_evidence_csv(tmp_path):
     assert frame.loc[0, "delta"] == -1
 
 
-@pytest.mark.parametrize(
-    "name, quarter",
-    [
-        ("nyc-park-crime-stats-q1-2015.xlsx", "2015Q1"),
-        ("nyc-park-crime-stats-q1-2026.xlsx", "2026Q1"),
-    ],
-)
-def test_fixture_run_over_two_real_workbooks(tmp_path, name, quarter):
-    if not RAW_DIR.exists():
-        pytest.skip("data/raw absent; run `make data` then `make warehouse` first")
-    source = RAW_DIR / name
-    if not source.exists():
-        pytest.skip(f"{source} absent; run `make data` then `make warehouse` first")
-    raw = tmp_path / "raw"
-    raw.mkdir()
-    shutil.copy(source, raw / name)
+def test_committed_fixture_workbooks_parse_end_to_end(fixture_raw):
+    """The committed dataset covers all three source shapes (ticket 0050)."""
+    parsed, records, violations = parse_all(fixture_raw)
 
-    parsed, records, violations = parse_all(raw)
-
-    assert violations == []
-    assert [w["quarter"] for w in parsed] == [quarter]
-    assert len(records) == parsed[0]["source_rows"] * len(CRIME_TYPES)
-    assert {r["quarter_label"] for r in records} == {quarter}
+    assert [workbook["quarter"] for workbook in parsed] == [
+        "2019Q1", "2019Q2", "2019Q3"
+    ]
+    assert {entry["kind"] for entry in violations} == {
+        "total_mismatch", "missing_column"
+    }
+    assert len(records) == sum(w["source_rows"] for w in parsed) * len(CRIME_TYPES)
+    assert {r["quarter_label"] for r in records} == {"2019Q1", "2019Q2", "2019Q3"}
     assert {r["crime_type"] for r in records} == set(CRIME_TYPES)
     assert any(r["count"] == 0 for r in records)
+    murder = [r for r in records if r["quarter_label"] == "2019Q3"
+              and r["crime_type"] == "MURDER"]
+    assert all(r["count"] is None and r["count_missing"] == 1 for r in murder)
     assert all(r["period_start"] <= r["period_end"] for r in records)
 
 
@@ -284,3 +308,9 @@ def test_allow_anomalies_rewrites_stale_csv(tmp_path, monkeypatch):
     frame = pd.read_csv(anomalies)
     assert list(frame.columns) == parse.ANOMALY_COLUMNS
     assert frame.empty
+
+
+def test_to_count_rejects_booleans():
+    for bad in (True, False):
+        with pytest.raises(parse.InvalidCount):
+            parse.to_count(bad)

@@ -2,6 +2,6 @@ metric,value
 parks,1155
 matched_parks,1009
 unweighted_coverage,0.8735930735930736
-weighted_coverage,0.9047581031454575
+weighted_coverage,0.9048947704081632
 fuzzy_false_positive,ST. NICHOLAS PLAYGROUND NORTH -> ST NICHOLAS PLAYGROUND SOUTH (0.18 km)
 fuzzy_false_positive,DUGAN PLAYGROUND -> DONGAN PLAYGROUND (2.96 km)

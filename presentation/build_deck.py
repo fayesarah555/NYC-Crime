@@ -26,7 +26,7 @@ METRICS_DIR = ROOT / "outputs" / "metrics"
 TABLES_DIR = ROOT / "outputs" / "tables"
 WAREHOUSE_CSV = ROOT / "data" / "processed" / "park_crime_long.csv"
 DECK = OUT_DIR / "nyc_crime_deck.pptx"
-WEB_CAPTURE = ROOT / "docs" / "screenshots" / "web_dashboard.png"
+WEB_CAPTURE = ROOT / "docs" / "screenshots" / "web_dashboard.jpg"
 APP_CAPTURE = OUT_DIR / "app_exploration.png"
 
 SLIDE_W, SLIDE_H = 13.333, 7.5
@@ -47,7 +47,9 @@ def seasonal_means():
     with WAREHOUSE_CSV.open(encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
             label = row["quarter_label"]
-            totals[label] = totals.get(label, 0) + int(row["count"])
+            if not row["count"]:
+                continue  # NULL: the workbook had no such crime column
+            totals[label] = totals.get(label, 0) + float(row["count"])
     per_quarter = {}
     for label, total in totals.items():
         per_quarter.setdefault(label[-1], []).append(total)
@@ -61,6 +63,8 @@ try:
     CLUSTERS = MODEL["clustering"]
     GEO = {row["metric"]: row["value"] for row in read_rows("geo_coverage.csv")}
     RATES = {row["borough"]: float(row["rate_per_100_acres"]) for row in read_rows("rate_by_borough.csv")}
+    # Consistent-perimeter rate excludes Central Park (partial coverage).
+    RATES_EXCL = {row["borough"]: float(row["rate_excl_central_park"]) for row in read_rows("rate_by_borough.csv")}
     TOP_PARKS = read_rows("top_parks.csv")
     PROFILES = read_rows("cluster_profiles.csv")
     SEASON = seasonal_means()
@@ -78,6 +82,48 @@ except FileNotFoundError as exc:
         file=sys.stderr,
     )
     raise SystemExit(2)
+
+
+MISSING_QUARTERS = EDA.get("missing_quarters") or (
+    [EDA["missing_quarter"]] if EDA.get("missing_quarter") else []
+)
+MISSING_LABEL = ", ".join(MISSING_QUARTERS)
+MISSING_COLUMN_QUARTERS = EDA.get("missing_column_quarters", [])
+MISSING_COLUMN_TYPES = EDA.get("missing_column_types", [])
+LATE_PARKS = EDA.get("late_parks", [])
+SOURCE_ANOMALIES = EDA.get("source_anomalies", [])
+
+
+def following_quarters(label, count):
+    """The `count` quarter labels after `label`."""
+    year, quarter = (int(part) for part in label.split("Q"))
+    out = []
+    for _ in range(count):
+        quarter += 1
+        if quarter == 5:
+            year, quarter = year + 1, 1
+        out.append(f"{year}Q{quarter}")
+    return out
+
+
+def late_park(name):
+    """First-quarter entry for a park that appears mid-period, or None."""
+    for entry in LATE_PARKS:
+        if entry["park"].upper() == name:
+            return entry
+    return None
+
+
+def anomaly_fr():
+    """TOTAL mismatches as one phrase, from the EDA metrics."""
+    return " ; ".join(
+        f"{entry['park'].title()} {entry['quarter']} : TOTAL "
+        f"{entry['total_recorded']} contre {entry['sum_computed']} pour la somme"
+        for entry in SOURCE_ANOMALIES
+    ) or "aucune anomalie TOTAL signalée"
+
+
+FORTHCOMING_QUARTERS = following_quarters(EDA["last_quarter"], 2)
 
 
 def fr(value, digits=0):
@@ -288,8 +334,8 @@ def data_slide(prs, index):
         6.3,
         4.9,
         [
-            ("NYPD, Park Crime Statistics. ", "Un classeur Excel par trimestre, publié sur nyc.gov ; sept types de crimes majeurs par parc."),
-            (f"{fr(len(list((ROOT / 'data' / 'raw').glob('*.xlsx'))))} classeurs. ", f"{EDA['first_quarter']} → {EDA['last_quarter']} ; 2020Q1 absent en amont ; 2026Q3 et 2026Q4 pas encore publiés (404)."),
+            ("NYPD, Park Crime Statistics. ", f"Un classeur Excel par trimestre, publié sur nyc.gov ; {len(EDA.get('crime_types', []))} types de crimes majeurs par parc."),
+            (f"{fr(len(list((ROOT / 'data' / 'raw').glob('*.xlsx'))))} classeurs. ", f"{EDA['first_quarter']} → {EDA['last_quarter']} ; {MISSING_LABEL} absent en amont ; {FORTHCOMING_QUARTERS[0]} et {FORTHCOMING_QUARTERS[1]} pas encore publiés (404)."),
             ("NYC Parks Properties. ", "Référentiel des parcs : surface en acres et coordonnées, pour le taux par acre et la carte."),
             ("Attribution. ", "NYPD / NYC Open Data ; données publiques, réutilisées sans modification de fond."),
         ],
@@ -401,7 +447,16 @@ def architecture_slide(prs, index):
 
 
 def quality_slide(prs, index):
-    slide = new_slide(prs, "Pipeline qualité", "Quatre pièges de la source, traités explicitement")
+    slide = new_slide(prs, "Pipeline qualité", "Cinq pièges de la source, traités explicitement")
+    central = late_park("CENTRAL PARK")
+    central_first = central["first_quarter"] if central else EDA["first_quarter"]
+    missing_columns = (
+        f"{' et '.join(MISSING_COLUMN_QUARTERS)} n'ont pas de colonne "
+        f"{'/'.join(MISSING_COLUMN_TYPES)} : la cellule est NULL et flaggée "
+        "count_missing, jamais un zéro."
+        if MISSING_COLUMN_QUARTERS else
+        "Aucun classeur ne manque une colonne de crime."
+    )
     add_bullets(
         slide,
         0.75,
@@ -409,10 +464,11 @@ def quality_slide(prs, index):
         11.7,
         4.4,
         [
-            ("Couverture mouvante. ", f"Central Park n'apparaît qu'en 2025Q1 : la hausse 2025 est de +{fr(EDA['yoy_change_pct'], 2)} % avec lui, mais de {fr(EDA['yoy_excluding_new_parks_pct'], 2)} % sans lui ({fr(EDA['latest_complete_year_excluding_new_parks_crimes'])} vs {fr(EDA['previous_year_crimes'])})."),
-            ("Trimestre manquant. ", "2020Q1 est absent de la source ; il est interpolé pour le modèle, jamais traité comme un zéro."),
-            ("Anomalie de parsing. ", "Flushing Meadows 2025Q4 : TOTAL 17 contre 18 pour la somme ; la ligne est exclue et journalisée dans source_anomalies.csv."),
-            ("Géolocalisation. ", f"{fr(GEO['matched_parks'])} parcs sur {fr(GEO['parks'])} rapprochés ({fr(float(GEO['unweighted_coverage']) * 100, 1)} %, {fr(float(GEO['weighted_coverage']) * 100, 1)} % pondéré par volume) ; deux rapprochements flous restent des faux positifs assumés."),
+            ("Couverture mouvante. ", f"Central Park n'apparaît qu'en {central_first} : la hausse 2025 est de +{fr(EDA['yoy_change_pct'], 2)} % avec lui, mais de +{fr(EDA['yoy_excluding_new_parks_pct'], 2)} % sans lui ({fr(EDA['latest_complete_year_excluding_new_parks_crimes'])} vs {fr(EDA['previous_year_crimes'])})."),
+            ("Trimestre manquant. ", f"{MISSING_LABEL} est absent de la source ; il est interpolé pour le modèle, jamais traité comme un zéro."),
+            ("Colonne absente. ", missing_columns),
+            ("Anomalie de parsing. ", f"{anomaly_fr()} ; les composantes sont conservées et flaggées total_mismatch dans source_anomalies.csv."),
+            ("Géolocalisation. ", f"{fr(GEO['matched_parks'])} parcs sur {fr(GEO['parks'])} rapprochés ({fr(float(GEO['unweighted_coverage']) * 100, 1)} %, {fr(float(GEO['weighted_coverage']) * 100, 1)} % pondéré par volume) ; les deux rapprochements flous audités sont écartés ou corrigés par override."),
         ],
         size=17,
         space_after=16,
@@ -431,15 +487,20 @@ def quality_slide(prs, index):
     footer(slide, index, TOTAL_SLIDES)
     note(
         slide,
-        "Quatre pièges traités explicitement. Le plus important : Central Park n'entre "
-        f"dans la source qu'en 2025Q1, donc la croissance de +{fr(EDA['yoy_change_pct'], 2)} % "
-        f"devient {fr(EDA['yoy_excluding_new_parks_pct'], 2)} % à périmètre constant. "
-        "2020Q1 manque et Flushing 2025Q4 est incohérent : nous documentons au lieu de lisser.",
+        "Cinq pièges traités explicitement. Le plus important : Central Park n'entre "
+        f"dans la source qu'en {central_first}, donc la croissance de "
+        f"+{fr(EDA['yoy_change_pct'], 2)} % devient "
+        f"+{fr(EDA['yoy_excluding_new_parks_pct'], 2)} % à périmètre constant. "
+        f"{MISSING_LABEL} manque, {', '.join(MISSING_COLUMN_TYPES)} est absent de "
+        f"{len(MISSING_COLUMN_QUARTERS)} classeurs et {anomaly_fr()} : nous "
+        "documentons au lieu de lisser.",
     )
 
 
 def limits_slide(prs, index):
     slide = new_slide(prs, "Limites", "Ce que ces données ne disent pas")
+    central = late_park("CENTRAL PARK")
+    central_first = central["first_quarter"] if central else EDA["first_quarter"]
     add_bullets(
         slide,
         0.75,
@@ -448,9 +509,9 @@ def limits_slide(prs, index):
         4.9,
         [
             ("Pas de fréquentation. ", "Le taux par acre mesure l'exposition du parc, pas le risque par visiteur."),
-            ("Couverture incomplète. ", "Central Park depuis 2025Q1 seulement ; 2020Q1 et les trimestres 2026Q3–Q4 absents."),
+            ("Couverture incomplète. ", f"Central Park depuis {central_first} seulement ; {MISSING_LABEL} et les trimestres {FORTHCOMING_QUARTERS[0]}–{FORTHCOMING_QUARTERS[1]} absents."),
             ("Déclarations, pas faits établis. ", "Ce sont des plaintes enregistrées : la propension à déclarer varie avec le quartier."),
-            ("Choix de modèle optimiste. ", "Le modèle est sélectionné sur la même fenêtre de backtest qu'il rapporte ; seul le comparatif avec la règle naïve est neutre."),
+            ("Choix de modèle. ", "Trois origines glissantes, tolérance de 1 % vers le modèle le plus simple, et test de Diebold-Mariano contre la naïve ; le SARIMAX n'apporte pas de gain significatif."),
             ("Périmètre du modèle. ", "STATEN ISLAND et BROOKLYN/QUEENS sont hors prévision par arrondissement, faute de volume."),
         ],
         size=17,
@@ -461,8 +522,8 @@ def limits_slide(prs, index):
         slide,
         "Les limites sont structurelles : pas de données de fréquentation, une "
         "couverture qui bouge, et des plaintes qui dépendent de la propension à "
-        "déclarer. Le backtest est honnête mais optimiste pour le modèle retenu, "
-        "puisqu'il a été choisi sur la même fenêtre.",
+        "déclarer. Le backtest roule sur trois origines et la tolérance de 1 % "
+        "favorise le modèle le plus simple.",
     )
 
 
@@ -476,8 +537,8 @@ def conclusion_slide(prs, index):
         4.9,
         [
             ("Concentré, pas diffus. ", f"{fr(EDA['parks_ever_hit'])} parcs sur {fr(EDA['parks_total'])} sont touchés au moins une fois ; en moyenne {fr(EDA['zero_share_mean_pct'], 2)} % des parcs n'enregistrent aucun crime par trimestre."),
-            ("Structuré par l'usage du sol. ", f"Manhattan concentre {fr(RATES['MANHATTAN'], 1)} crimes pour 100 acres contre {fr(RATES['STATEN ISLAND'], 1)} à Staten Island ; le larcin domine à Manhattan, le vol qualifié dans le Bronx."),
-            ("Prévisible à court terme. ", f"SARIMAX : MAE {fr(CITY['selected_mae'], 2)} contre {fr(CITY['baseline_mae'], 2)} pour la règle naïve, MAPE {fr(CITY['selected_mape'], 2)} % sur huit trimestres."),
+            ("Structuré par l'usage du sol. ", f"Manhattan concentre {fr(RATES_EXCL['MANHATTAN'], 1)} crimes pour 100 acres hors Central Park contre {fr(RATES_EXCL['STATEN ISLAND'], 1)} à Staten Island ; le larcin domine à Manhattan, le vol qualifié dans le Bronx."),
+            ("Prévisible à court terme. ", f"{CITY['selected_model'].replace('_', ' ')} retenue : MAE {fr(CITY['selected_mae'], 2)} ± {fr(CITY['selected_mae_sd'], 2)} ; le SARIMAX n'en diffère pas significativement (Diebold-Mariano p = {fr(CITY['best_challenger']['dm_p'], 2)}), MAPE {fr(CITY['selected_mape'], 2)} % sur {CITY['backtest_quarters']} prévisions."),
             ("La réserve. ", "Toute prévision reste gonflée par l'ajout de Central Park à la source ; elle décrit une couverture, pas une explosion."),
         ],
         size=18,
@@ -621,13 +682,14 @@ def build():
                 prs,
                 i,
                 "Tendances",
-                "Un pic en 2018, un plateau depuis 2022",
+                "Un pic marqué, puis un plateau",
                 FIG_DIR / "fig01_quarterly_trend.png",
-                f"Pic {EDA['peak_quarter']} : {fr(EDA['peak_quarter_crimes'])} crimes ; à périmètre constant, 2025 recule de {fr(abs(EDA['yoy_excluding_new_parks_pct']), 2)} %.",
+                f"Pic {EDA['peak_quarter']} : {fr(EDA['peak_quarter_crimes'])} crimes ; à périmètre constant, 2025 varie de {fr(EDA['yoy_excluding_new_parks_pct'], 2)} %.",
                 "La série citywide est dominée par la saisonnalité et par un pic estival "
-                f"en {EDA['peak_quarter']} à {fr(EDA['peak_quarter_crimes'])} crimes. Depuis 2022 "
-                "le niveau est plus bas mais stable. Attention : la marche de 2025Q1 vient "
-                "de l'ajout de Central Park à la source, pas d'une hausse réelle.",
+                f"en {EDA['peak_quarter']} à {fr(EDA['peak_quarter_crimes'])} crimes. "
+                "Depuis le pic, le niveau est plus bas mais stable. Attention : la "
+                "marche de début 2025 vient de l'ajout de Central Park à la source, "
+                "pas d'une hausse réelle.",
             ),
         ),
         (
@@ -653,7 +715,7 @@ def build():
                 "Arrondissement × type",
                 "La liaison existe, mais elle est faible",
                 FIG_DIR / "fig03_borough_type_heatmap.png",
-                f"χ² = {fr(EDA['chi2_statistic'], 1)} (ddl {EDA['chi2_dof']}, p < 1e-200), V de Cramér = {fr(EDA['cramers_v'], 3)} : significatif, mais faible.",
+                f"χ² = {fr(EDA['chi2_statistic'], 1)} (ddl {EDA['chi2_dof']}, {EDA['chi2_p_display']}), V de Cramér = {fr(EDA['cramers_v'], 3)} : significatif, mais faible.",
                 "Le test du chi-deux rejette l'indépendance très largement : "
                 f"χ² = {fr(EDA['chi2_statistic'], 1)} pour {EDA['chi2_dof']} degrés de liberté. "
                 f"Mais le V de Cramér vaut {fr(EDA['cramers_v'], 3)} : la structure est réelle "
@@ -668,12 +730,13 @@ def build():
                 prs,
                 i,
                 "Parcs critiques",
-                "Quinze parcs portent le risque visible",
+                f"{len(TOP_PARKS)} parcs portent le risque visible",
                 FIG_DIR / "fig04_top_parks.png",
-                f"{TOP_PARKS[0]['park'].title()} : {fr(int(TOP_PARKS[0]['total']))} crimes, devant {TOP_PARKS[1]['park'].title()} ({fr(int(TOP_PARKS[1]['total']))}).",
-                "Flushing Meadows arrive en tête avec "
-                f"{fr(int(TOP_PARKS[0]['total']))} crimes, devant Washington Square "
-                f"({fr(int(TOP_PARKS[1]['total']))}) et Coney Island. Ces parcs cumulent "
+                f"{TOP_PARKS[0]['park'].title()} : {fr(int(float(TOP_PARKS[0]['total'])))} crimes, devant {TOP_PARKS[1]['park'].title()} ({fr(int(float(TOP_PARKS[1]['total'])))}).",
+                f"{TOP_PARKS[0]['park'].title()} arrive en tête avec "
+                f"{fr(int(float(TOP_PARKS[0]['total'])))} crimes, devant "
+                f"{TOP_PARKS[1]['park'].title()} "
+                f"({fr(int(float(TOP_PARKS[1]['total'])))}). Ces parcs cumulent "
                 "volume et mix de délits : ce sont les sites où une patrouille ciblée a "
                 "le plus d'effet marginal.",
             ),
@@ -686,11 +749,16 @@ def build():
                 "Taux par acre",
                 "Rapporter à la surface change le classement",
                 FIG_DIR / "fig05_rate_per_100acres.png",
-                f"Manhattan : {fr(RATES['MANHATTAN'], 1)} crimes / 100 acres contre {fr(RATES['STATEN ISLAND'], 1)} à Staten Island (×{fr(RATES['MANHATTAN'] / RATES['STATEN ISLAND'], 0)}).",
+                f"Manhattan : {fr(RATES_EXCL['MANHATTAN'], 1)} crimes / 100 acres hors Central Park contre {fr(RATES_EXCL['STATEN ISLAND'], 1)} à Staten Island (×{fr(RATES_EXCL['MANHATTAN'] / RATES_EXCL['STATEN ISLAND'], 0)}).",
                 "En volume brut le Bronx paraît dense ; rapporté à la surface, c'est "
-                f"Manhattan qui domine avec {fr(RATES['MANHATTAN'], 1)} crimes pour cent "
-                f"acres, contre {fr(RATES['STATEN ISLAND'], 1)} à Staten Island. Le taux "
-                "mesure l'exposition du parc, pas le risque par visiteur.",
+                f"Manhattan qui domine avec {fr(RATES_EXCL['MANHATTAN'], 1)} crimes pour "
+                f"cent acres hors Central Park ({fr(RATES['MANHATTAN'], 1)} avec), contre "
+                f"{fr(RATES_EXCL['STATEN ISLAND'], 1)} à Staten Island. Le taux est calculé "
+                "sur les parcs dotés d'une surface, et Central Park est exclu du chiffre "
+                "de tête car sa série ne couvre que "
+                f"{(late_park('CENTRAL PARK') or {}).get('first_quarter', EDA['first_quarter'])}"
+                f"–{EDA['last_quarter']}. Il mesure l'exposition du parc, pas le risque "
+                "par visiteur.",
             ),
         ),
         (
@@ -699,7 +767,7 @@ def build():
                 prs,
                 i,
                 "Concentration",
-                "Neuf parcs sur dix sont vides un trimestre donné",
+                f"{fr(EDA['zero_share_mean_pct'], 0)} % des parcs sont vides un trimestre donné",
                 FIG_DIR / "fig06_zero_share.png",
                 f"{fr(EDA['zero_share_mean_pct'], 2)} % des parcs sans crime en moyenne ; {fr(EDA['parks_ever_hit'])} parcs sur {fr(EDA['parks_total'])} touchés au moins une fois.",
                 "En moyenne, "
@@ -715,13 +783,15 @@ def build():
                 prs,
                 i,
                 "Prévision et backtest",
-                "Le modèle bat la règle naïve, sans miracle",
+                "La naïve saisonnière reste la référence",
                 FIG_DIR / "fig07_forecast.png",
-                f"SARIMAX : MAE {fr(CITY['selected_mae'], 2)} vs {fr(CITY['baseline_mae'], 2)} (naïf récursif), MAPE {fr(CITY['selected_mape'], 2)} % ; 2026Q3 : {fr(CITY['forecast'][0]['point'], 0)} [{fr(CITY['forecast'][0]['lower'], 0)} ; {fr(CITY['forecast'][0]['upper'], 0)}].",
-                "Sur huit trimestres de backtest, le SARIMAX atteint une MAE de "
-                f"{fr(CITY['selected_mae'], 2)} contre {fr(CITY['baseline_mae'], 2)} pour la "
-                f"règle naïve récursive, soit {fr(CITY['improvement_pct'], 2)} % de mieux. "
-                "La prévision 2026Q3 est de "
+                f"{CITY['selected_model'].replace('_', ' ')} : MAE {fr(CITY['selected_mae'], 2)} ± {fr(CITY['selected_mae_sd'], 2)} vs SARIMAX {fr(CITY['best_challenger']['mae'], 2)} (DM p = {fr(CITY['best_challenger']['dm_p'], 2)}), MAPE {fr(CITY['selected_mape'], 2)} % ; {CITY['forecast'][0]['quarter_label']} : {fr(CITY['forecast'][0]['point'], 0)} [{fr(CITY['forecast'][0]['lower'], 0)} ; {fr(CITY['forecast'][0]['upper'], 0)}].",
+                f"Sur {CITY['backtest_quarters']} prévisions issues de trois origines "
+                f"glissantes, la naïve saisonnière atteint une MAE de "
+                f"{fr(CITY['selected_mae'], 2)} ± {fr(CITY['selected_mae_sd'], 2)} ; le "
+                f"SARIMAX la suit ({fr(CITY['best_challenger']['mae'], 2)}) et le test de "
+                f"Diebold-Mariano ne les sépare pas (p = {fr(CITY['best_challenger']['dm_p'], 2)}). "
+                f"La prévision réconciliée {CITY['forecast'][0]['quarter_label']} est de "
                 f"{fr(CITY['forecast'][0]['point'], 0)} crimes, intervalle "
                 f"[{fr(CITY['forecast'][0]['lower'], 0)} ; {fr(CITY['forecast'][0]['upper'], 0)}]. "
                 "Réserve : Central Park gonfle le niveau prévu.",
@@ -733,15 +803,15 @@ def build():
                 prs,
                 i,
                 "Prévisions par arrondissement",
-                "Quatre arrondissements, un même rythme saisonnier",
+                f"{len(BOROUGH_FORECAST[BOROUGH_FIRST_Q])} arrondissements, un même rythme saisonnier",
                 FIG_DIR / "fig09_forecast_boroughs.png",
                 f"{BOROUGH_FIRST_Q} : Manhattan {fr(BOROUGH_FORECAST[BOROUGH_FIRST_Q]['MANHATTAN'])}, "
                 f"Brooklyn {fr(BOROUGH_FORECAST[BOROUGH_FIRST_Q]['BROOKLYN'])}, "
                 f"Queens {fr(BOROUGH_FORECAST[BOROUGH_FIRST_Q]['QUEENS'])}, "
                 f"Bronx {fr(BOROUGH_FORECAST[BOROUGH_FIRST_Q]['BRONX'])} crimes prévus.",
                 "Le modèle citywide est décliné par arrondissement. Manhattan et Brooklyn "
-                "portent les volumes les plus élevés, le Bronx les plus faibles ; les "
-                "quatre suivent le même cycle saisonnier. Staten Island n'apparaît pas, "
+                "portent les volumes les plus élevés, le Bronx les plus faibles ; tous "
+                "suivent le même cycle saisonnier. Staten Island n'apparaît pas, "
                 "faute de volume suffisant. "
                 "Les intervalles s'élargissent hors saison haute, au point que certaines "
                 "bornes basses passent sous zéro : à quatre trimestres, la prévision par "
@@ -754,10 +824,10 @@ def build():
                 prs,
                 i,
                 "Typologie des parcs",
-                "Quatre profils de criminalité, pas un continuum",
+                f"{CLUSTERS['selected_k']} profils de criminalité, pas un continuum",
                 FIG_DIR / "fig08_clusters.png",
                 f"k = {CLUSTERS['selected_k']} (silhouette {fr(CLUSTERS['silhouette'], 3)}) sur {fr(CLUSTERS['n_parks'])} parcs : vol qualifié, larcin, grands parcs, violence.",
-                "La classification non supervisée retient quatre groupes sur "
+                f"La classification non supervisée retient {CLUSTERS['selected_k']} groupes sur "
                 f"{fr(CLUSTERS['n_parks'])} parcs, avec une silhouette de "
                 f"{fr(CLUSTERS['silhouette'], 3)} : honnête mais pas nette. Deux groupes "
                 "sont des parcs de proximité à vol qualifié et à larcin, un regroupe les "

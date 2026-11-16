@@ -81,7 +81,7 @@ export default function MethodTab() {
             diagramme navigable. Le fichier est servi avec le site.
           </Text>
           <iframe
-            src="/architecture.html"
+            src="/architecture"
             title="Architecture du pipeline NYC park crime"
             loading="lazy"
             style={{width: '100%', height: '60vh', border: 'none'}}

@@ -680,12 +680,12 @@ def build_meta(parks, series, stats, metrics, provenance, parks_ref, crimes):
         caveats.append(
             f"{entry['park'].title()} {entry['quarter']}: {total_en}; its "
             "components are kept and flagged total_mismatch, excluded from "
-            "TOTAL-based checks only — see outputs/tables/source_anomalies.csv."
+            "TOTAL-based checks only: see outputs/tables/source_anomalies.csv."
         )
         caveats_fr.append(
             f"{entry['park'].title()} {entry['quarter']} : {total_fr} ; ses "
             "composantes sont conservées et flaggées total_mismatch, la ligne "
-            "n'est exclue que des contrôles TOTAL — voir "
+            "n'est exclue que des contrôles TOTAL : voir "
             "outputs/tables/source_anomalies.csv."
         )
     caveats.append(
@@ -771,7 +771,7 @@ def build_meta(parks, series, stats, metrics, provenance, parks_ref, crimes):
         ],
         "source_links": [
             {
-                "label": "NYPD — Park Crime Statistics",
+                "label": "NYPD, Park Crime Statistics",
                 "url": "https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page",
             },
             {

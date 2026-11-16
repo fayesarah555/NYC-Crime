@@ -226,7 +226,7 @@ export default function Dashboard() {
                       <Text type="supporting" color="secondary">
                         Clusters (k = {clusters.k}, silhouette{' '}
                         {clusters.silhouette}) : {clusters.parks.length} parcs
-                        couverts —{' '}
+                        couverts :{' '}
                         {clusters.profiles
                           .map(
                             profile =>

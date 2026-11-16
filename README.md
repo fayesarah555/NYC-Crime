@@ -1,11 +1,11 @@
 # Criminalité dans les parcs de New York
 
-**Module Open Data — IPSSI · Sujet 2 · Novembre 2026**
+**Module Open Data, IPSSI · Sujet 2 · Novembre 2026**
 
-Projet de bout en bout : téléchargement des données ouvertes du NYPD, entrepôt
-local, analyse exploratoire, modélisation de séries temporelles, typologie des
-parcs et application interactive. Tous les chiffres du README et du diaporama
-proviennent des artefacts générés par le pipeline, jamais d'une saisie manuelle.
+Projet complet : téléchargement des données ouvertes du NYPD, entrepôt local,
+analyse exploratoire, modélisation de séries temporelles, typologie des parcs
+et application interactive. Les chiffres du README et du diaporama sortent des
+artefacts produits par le pipeline ; aucun n'est saisi à la main.
 
 ## Contexte et objectifs (sujet 2)
 
@@ -14,18 +14,18 @@ ville publie, trimestre par trimestre, le nombre des sept crimes majeurs
 déclarés dans chacun d'eux. Le sujet 2 consiste à transformer ces classeurs
 hétérogènes en une analyse reproductible et à répondre à trois questions :
 
-1. **Mesurer** — quel volume, quelle saisonnalité, quels déséquilibres entre
+1. **Mesurer.** Quel volume, quelle saisonnalité, quels déséquilibres entre
    arrondissements et types de délit ?
-2. **Localiser** — quels parcs concentrent le risque, une fois la surface prise
+2. **Localiser.** Quels parcs concentrent le risque, une fois la surface prise
    en compte ?
-3. **Prévoir** — un modèle de série temporelle bat-il une règle naïve, et avec
+3. **Prévoir.** Un modèle de série temporelle bat-il une règle naïve, et avec
    quelle incertitude ?
 
 ## Source des données
 
 | Source | Contenu | Usage |
 | --- | --- | --- |
-| [NYPD — Park Crime Statistics](https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page) | un classeur Excel par trimestre : par parc, les sept crimes majeurs | série temporelle |
+| [NYPD, Park Crime Statistics](https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-stats.page) | un classeur Excel par trimestre : par parc, les sept crimes majeurs | série temporelle |
 | [NYC Parks Properties](https://data.cityofnewyork.us/) | référentiel des parcs : surface en acres, coordonnées | taux par acre, carte |
 
 - Période couverte : **2014Q4 → 2026Q2**, soit 46 trimestres et 46 classeurs.
@@ -44,6 +44,21 @@ Attribution : données produites par le **NYPD** et la ville de New York,
 publiées sur **NYC Open Data** / nyc.gov. Réutilisation à des fins pédagogiques ;
 les données restent la propriété de leurs producteurs et ne sont pas modifiées
 dans leur fond.
+
+## Données
+
+Les données ne sont **pas versionnées** : `data/raw/` (classeurs NYPD),
+`data/processed/` et `data/warehouse.db` sont ignorés par Git (~104 Mo).
+Sur un clone neuf, il faut donc reconstruire le pipeline localement :
+
+```bash
+make data       # télécharge les classeurs NYPD -> data/raw/
+make warehouse  # parse -> data/processed/park_crime_long.csv + data/warehouse.db
+```
+
+Seul le sous-ensemble consommé par le tableau de bord est versionné :
+`app/web/public/data/*.json` (six fichiers, < 2 Mo). C'est la charge utile du
+déploiement : le build web n'a besoin d'aucune donnée Python.
 
 ## Architecture
 
@@ -142,18 +157,42 @@ n'importe quel serveur de fichiers statiques ; en local, `npx vite preview`
 
 Onglets :
 
-- **Exploration** — filtres par arrondissement, type de délit, période et
+- **Exploration** : filtres par arrondissement, type de délit, période et
   recherche de parc. Les quatre indicateurs (crimes de la sélection, parcs
-  touchés, délit dominant, évolution) sont recalculés à chaque filtre — 12 526
-  crimes au total, toutes sélections confondues. Puis carte des parcs (option
-  coloration par cluster), tendance citywide ou par arrondissement, top parcs
-  et matrice arrondissement × type.
-- **Prévisions** — backtest SARIMAX contre la règle naïve, prévisions citywide
+  touchés, délit dominant, évolution) sont recalculés à chaque filtre ; sur
+  l'ensemble des sélections, 12 526 crimes au total. Puis carte des parcs
+  (option coloration par cluster), tendance citywide ou par arrondissement, top
+  parcs et matrice arrondissement × type.
+- **Prévisions** : backtest SARIMAX contre la règle naïve, prévisions citywide
   2026Q3 → 2027Q2 avec intervalle à 95 %, et limites du modèle.
-- **Méthode** — sources, périodes et anomalies de couverture, licence et
+- **Méthode** : sources, périodes et anomalies de couverture, licence et
   attribution.
 
 ![Tableau de bord web](docs/screenshots/web_dashboard.png)
+
+## Déploiement Vercel
+
+`vercel.json` décrit un site **statique** : `npm --prefix app/web run build`
+puis publication de `app/web/dist/`. Aucun Python ne tourne au build : les JSON
+déjà versionnés dans `app/web/public/data/` suffisent.
+
+Depuis le tableau de bord Vercel :
+
+1. importer le dépôt Git ;
+2. nommer le projet `nyc-crimes` ;
+3. laisser `vercel.json` imposer la commande de build et le dossier de sortie
+   (`app/web/dist`).
+
+Ou en ligne de commande depuis la racine du dépôt. Sans liaison explicite,
+`vercel --prod` nomme le projet d'après le dossier (`nyc-crime`) ; liez-le
+d'abord pour obtenir le nom `nyc-crimes` :
+
+```bash
+vercel link --yes --project nyc-crimes
+vercel --prod
+```
+
+Le site est alors publié sur `nyc-crimes.vercel.app`.
 
 ## Vue analyste (Streamlit)
 
@@ -218,14 +257,14 @@ le même ajout de Central Park (`coverage_gaps.csv`).
 ```text
 etl/            download.py (téléchargement + manifeste), parse.py (entrepôt), geo.py (parcs)
 analysis/       eda.py (statistiques, figures), model.py (SARIMAX, backtest, KMeans)
-app/            app.py — application Streamlit (filtres, carte, prévisions, méthode)
-app/web/        tableau de bord Astryx (React + Vite) — interface principale
-export/         export_web.py — artefacts Python -> JSON statiques pour app/web
+app/            app.py : application Streamlit (filtres, carte, prévisions, méthode)
+app/web/        tableau de bord Astryx (React + Vite), interface principale
+export/         export_web.py : artefacts Python -> JSON statiques pour app/web
 presentation/   build_deck.py, nyc_crime_deck.pptx, script_oral.md
-docs/           data_dictionary.md — dictionnaire de données et règles de parsing
+docs/           data_dictionary.md : dictionnaire de données et règles de parsing
 outputs/        tables/ (CSV), figures/ (PNG), metrics/ (JSON)
 tests/          pytest : ETL, manifeste, géolocalisation, EDA, modèle, helpers de l'app
-data/           raw/ (classeurs + manifeste), processed/ (CSV), warehouse.db — non versionnés
+data/           raw/ (classeurs + manifeste), processed/ (CSV), warehouse.db : non versionnés
 ```
 
 ## Tests

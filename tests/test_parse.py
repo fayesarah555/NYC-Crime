@@ -187,10 +187,10 @@ def test_allow_anomalies_writes_evidence_csv(tmp_path):
 )
 def test_fixture_run_over_two_real_workbooks(tmp_path, name, quarter):
     if not RAW_DIR.exists():
-        pytest.skip(f"{RAW_DIR} absent; run etl/download.py first")
+        pytest.skip("data/raw absent; run `make data` then `make warehouse` first")
     source = RAW_DIR / name
     if not source.exists():
-        pytest.skip(f"{source} absent; run etl/download.py first")
+        pytest.skip(f"{source} absent; run `make data` then `make warehouse` first")
     raw = tmp_path / "raw"
     raw.mkdir()
     shutil.copy(source, raw / name)

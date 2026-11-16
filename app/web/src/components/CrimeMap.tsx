@@ -59,7 +59,7 @@ export default function CrimeMap({
                 weight: 1,
               }}>
               <Tooltip>
-                {park.park} — {formatInt(count)} crimes
+                {park.park} : {formatInt(count)} crimes
               </Tooltip>
             </CircleMarker>
           );

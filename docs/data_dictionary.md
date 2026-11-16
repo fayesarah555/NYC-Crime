@@ -1,9 +1,9 @@
-# Data dictionary — park crime, long format
+# Data dictionary: park crime, long format
 
 Outputs of `python etl/parse.py`:
 
-- `data/processed/park_crime_long.csv` — one row per (quarter, park, crime type).
-- `data/warehouse.db` — same rows in the `crimes_long` table, indexed on
+- `data/processed/park_crime_long.csv`: one row per (quarter, park, crime type).
+- `data/warehouse.db`: same rows in the `crimes_long` table, indexed on
   `(quarter_label, park, crime_type)`.
 
 Both are built from the workbooks in `data/raw/` (NYPD park-crime quarterly

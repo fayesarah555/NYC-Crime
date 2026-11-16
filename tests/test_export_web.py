@@ -8,6 +8,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+if not (ROOT / "data" / "warehouse.db").exists():
+    pytest.skip(
+        "data/warehouse.db absent; run `make data` then `make warehouse` first",
+        allow_module_level=True,
+    )
 FILES = (
     "meta.json", "parks.json", "series.json",
     "borough_type.json", "forecast.json", "clusters.json",

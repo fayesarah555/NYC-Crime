@@ -223,7 +223,7 @@ def render_map(selection, geo):
     view = pdk.ViewState(
         latitude=40.73, longitude=-73.94, zoom=10, pitch=0, bearing=0
     )
-    tooltip = {"html": "<b>{park}</b><br/>{total} crimes — délit dominant : {crime_type}"}
+    tooltip = {"html": "<b>{park}</b><br/>{total} crimes, délit dominant : {crime_type}"}
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, tooltip=tooltip))
 
 
@@ -299,8 +299,9 @@ def render_forecast():
         + metrics["selection_caveat"]
     )
     st.write(
-        f"Baseline naïve saisonnière : MAE {metrics['baseline_mae']} — amélioration de "
-        f"{metrics['improvement_pct']} % sur {metrics['backtest_quarters']} trimestres de backtest."
+        f"Baseline naïve saisonnière : MAE {metrics['baseline_mae']}, soit une "
+        f"amélioration de {metrics['improvement_pct']} % sur {metrics['backtest_quarters']} "
+        "trimestres de backtest."
     )
 
     st.subheader("Prévisions citywide")
@@ -415,7 +416,7 @@ def main():
 
     st.title("Criminalité dans les parcs de New York")
     st.caption(
-        "NYPD Park Crime Statistics — données trimestrielles par parc, "
+        "NYPD Park Crime Statistics : données trimestrielles par parc, de "
         "2014Q4 à 2026Q2. Source et limites détaillées dans l'onglet Méthode."
     )
 

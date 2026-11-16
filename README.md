@@ -2,6 +2,8 @@
 
 **Module Open Data, IPSSI · Sujet 2 · Novembre 2026**
 
+**Démo en ligne : [nyc-crimes.vercel.app](https://nyc-crimes.vercel.app)**
+
 Projet complet : téléchargement des données ouvertes du NYPD, entrepôt local,
 analyse exploratoire, modélisation de séries temporelles, typologie des parcs
 et application interactive. Les chiffres du README et du diaporama sortent des
@@ -192,7 +194,7 @@ vercel link --yes --project nyc-crimes
 vercel --prod
 ```
 
-Le site est alors publié sur `nyc-crimes.vercel.app`.
+Le site est alors publié sur **[nyc-crimes.vercel.app](https://nyc-crimes.vercel.app)**.
 
 ## Vue analyste (Streamlit)
 

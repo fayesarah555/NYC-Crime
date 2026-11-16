@@ -34,7 +34,6 @@ FIGSIZE = (10, 6)
 
 # Okabe-Ito colourblind-safe palette, shared with the web dashboard and
 # Streamlit through palette_data.py (the exporter serialises the same values).
-sys.path.insert(0, str(ROOT))
 from palette_data import CLUSTER_PALETTE, NEUTRAL_COLOR  # noqa: E402
 
 OKABE_ITO = CLUSTER_PALETTE + ["#000000", "#F0E442", NEUTRAL_COLOR]

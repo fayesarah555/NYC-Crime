@@ -37,6 +37,7 @@ dev = [
 
 [tool.setuptools]
 packages = ["etl", "analysis", "export"]
+py-modules = ["palette_data"]
 
 [tool.ruff]
 target-version = "py311"

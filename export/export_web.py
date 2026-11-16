@@ -25,7 +25,6 @@ import jsonschema
 import pandas as pd
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import palette_data  # noqa: E402  (single palette for web, Streamlit, matplotlib)
 
 ROOT = Path(__file__).resolve().parents[1]

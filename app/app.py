@@ -34,7 +34,6 @@ SOURCE_URL = "https://www.nyc.gov/site/nypd/stats/crime-statistics/park-crime-st
 CRIME_COLUMNS = ["quarter_label", "park", "borough", "crime_type", "count"]
 GEO_COLUMNS = ["park", "borough", "lat", "lon"]
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from palette_data import NEUTRAL_COLOR, short_labels, type_colors  # noqa: E402
 
 # One palette for Streamlit, the web dashboard and the figures (palette_data.py).
